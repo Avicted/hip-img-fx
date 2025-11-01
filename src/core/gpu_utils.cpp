@@ -170,12 +170,6 @@ hipError_t prepare_device_buffers(
     size_t image_bytes,
     int device_id)
 {
-    int hip_device_count = get_hip_devices();
-    if (hip_device_count < 1)
-    {
-        fprintf(stderr, "ERROR: Could not find any HIP device!\n");
-        return hipErrorNoDevice;
-    }
     HIP_ERRCHK(hipSetDevice(device_id));
     HIP_ERRCHK(hipMalloc(reinterpret_cast<void **>(&d_input.ptr), image_bytes));
     HIP_ERRCHK(hipMalloc(reinterpret_cast<void **>(&d_output.ptr), image_bytes));
@@ -210,8 +204,7 @@ hipError_t apply_filter_generic_templated(
 
     dim3 gridSize = compute_grid(width, height, blockSize);
 
-    printf("====================================================================\n");
-    printf("    Using GPU %d\n", device_id);
+    printf("  Using GPU %d\n", device_id);
 
     launch_kernel(d_input.ptr, d_output.ptr, gridSize, blockSize, shared_bytes);
 

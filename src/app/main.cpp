@@ -82,6 +82,13 @@ int main(int argc, char **argv)
     printf("Output: %s\n", args.output_file);
     printf("Filter Type: %s\n", filter_type_to_string(args.filter_type).c_str());
 
+    int hip_device_count = get_hip_devices();
+    if (hip_device_count < 1)
+    {
+        fprintf(stderr, "ERROR: Could not find any HIP device!\n");
+        return hipErrorNoDevice;
+    }
+
     fs::path input_path(args.input_file);
     fs::path output_path(args.output_file);
 
@@ -104,6 +111,7 @@ int main(int argc, char **argv)
             }
 
             fs::path out_file = output_path / entry.path().filename();
+            printf("------------------------------------------------------------\n");
             printf("\nProcessing: %s -> %s\n", entry.path().string().c_str(), out_file.string().c_str());
             int res = process_one(entry.path().string(), out_file.string(), args.filter_type);
             if (res == 0)

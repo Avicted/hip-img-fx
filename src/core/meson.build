@@ -2,6 +2,7 @@ core_sources = files(
   'gpu_utils.cpp',
   'image.cpp',
   'filters/grayscale.hip.cpp',
+  'filters/negative.hip.cpp',
 )
 
 core_lib = static_library(

@@ -71,6 +71,8 @@ std::string filter_type_to_string(FILTER_TYPE type)
         return "UNDEFINED";
     case FILTER_TYPE::GRAYSCALE:
         return "GRAYSCALE";
+    case FILTER_TYPE::NEGATIVE:
+        return "NEGATIVE";
     default:
         return "UNKNOWN";
     }
@@ -88,6 +90,8 @@ int apply_filter(
     {
     case FILTER_TYPE::GRAYSCALE:
         return apply_grayscale_filter(input_image, output_image, width, height, channels);
+    case FILTER_TYPE::NEGATIVE:
+        return apply_negative_filter(input_image, output_image, width, height, channels);
     default:
         printf("ERROR: Unsupported filter type!\n");
         return -1;
@@ -139,6 +143,77 @@ hipError_t apply_grayscale_filter(
 
     hipLaunchKernelGGL(
         grayscale_kernel,
+        gridSize,
+        blockSize,
+        0,
+        0,
+        d_input,
+        d_output,
+        width,
+        height,
+        channels);
+
+    HIP_ERRCHK(hipDeviceSynchronize());
+
+    // Copy result back to host
+    HIP_ERRCHK(hipMemcpy(
+        output_image,
+        d_output,
+        image_bytes,
+        hipMemcpyDeviceToHost));
+
+    // Free device memory
+    HIP_ERRCHK(hipFree(d_input));
+    HIP_ERRCHK(hipFree(d_output));
+
+    return hipSuccess;
+}
+
+hipError_t apply_negative_filter(
+    unsigned char *input_image,
+    unsigned char *output_image,
+    int width,
+    int height,
+    int channels)
+{
+    int hip_device_count = get_hip_devices();
+    if (hip_device_count < 1)
+    {
+        fprintf(stderr, "ERROR: Could not find any HIP device!\n");
+        return hipErrorNoDevice;
+    }
+    printf("hip_device_count: %d\n", hip_device_count);
+
+    hipError_t err;
+
+    size_t image_bytes = width * height * channels * sizeof(unsigned char);
+
+    unsigned char *d_input = nullptr;
+    unsigned char *d_output = nullptr;
+
+    // Allocate device memory
+    HIP_ERRCHK(hipMalloc(reinterpret_cast<void **>(&d_input), image_bytes));
+    HIP_ERRCHK(hipMalloc(reinterpret_cast<void **>(&d_output), image_bytes));
+
+    // Copy data to device memory
+    HIP_ERRCHK(hipMemcpy(
+        d_input,
+        input_image,
+        image_bytes,
+        hipMemcpyHostToDevice));
+
+    // Kernel launch parameters
+    dim3 blockSize(16, 16);
+    dim3 gridSize(
+        (width + blockSize.x - 1) / blockSize.x,
+        (height + blockSize.y - 1) / blockSize.y);
+
+    HIP_ERRCHK(hipSetDevice(0));
+    printf("====================================================================\n");
+    printf("    Using GPU 0\n");
+
+    hipLaunchKernelGGL(
+        negative_kernel,
         gridSize,
         blockSize,
         0,

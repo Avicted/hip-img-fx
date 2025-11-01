@@ -6,6 +6,7 @@ enum class FILTER_TYPE
 {
     UNDEFINED,
     GRAYSCALE,
+    NEGATIVE,
 };
 
 inline void hip_errchk(hipError_t err, const char *file, int line);
@@ -29,6 +30,20 @@ hipError_t apply_grayscale_filter(
     int channels);
 
 __global__ void grayscale_kernel(
+    const unsigned char *input_image,
+    unsigned char *output_image,
+    int width,
+    int height,
+    int channels);
+
+hipError_t apply_negative_filter(
+    unsigned char *input_image,
+    unsigned char *output_image,
+    int width,
+    int height,
+    int channels);
+
+__global__ void negative_kernel(
     const unsigned char *input_image,
     unsigned char *output_image,
     int width,

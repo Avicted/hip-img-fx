@@ -34,6 +34,10 @@ cli_args_t parse_cli_args(int argc, char **argv)
             {
                 args.filter_type = FILTER_TYPE::GRAYSCALE;
             }
+            else if (strcmp(argv[i], "negative") == 0)
+            {
+                args.filter_type = FILTER_TYPE::NEGATIVE;
+            }
             else
             {
                 printf("Unknown filter type: %s\n", argv[i]);

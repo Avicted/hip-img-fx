@@ -89,5 +89,29 @@ cli_args_t parse_cli_args(int argc, char **argv)
         exit(1);
     }
 
+    // Warn if input and output directories are the same
+    namespace fs = std::filesystem;
+    fs::path input_path(args.input_file);
+    fs::path output_path(args.output_file);
+    if (fs::is_directory(input_path) && fs::is_directory(output_path))
+    {
+        if (fs::equivalent(input_path, output_path))
+        {
+            printf("WARNING: Input and output directories are the same!\n");
+            printf("This will overwrite all images in the input directory with the filtered images.\n");
+            printf("Continue? [Y/n]: ");
+            fflush(stdout);
+            char response[8] = {0};
+            if (fgets(response, sizeof(response), stdin))
+            {
+                if (response[0] == 'n' || response[0] == 'N')
+                {
+                    printf("Aborted by user.\n");
+                    exit(1);
+                }
+            }
+        }
+    }
+
     return args;
 }

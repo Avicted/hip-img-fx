@@ -128,9 +128,10 @@ int apply_filter(
     }
     case FILTER_TYPE::GAUSSIAN_BLUR:
     {
-        const int blurAmount = 11; // must be odd
+        const int blurAmount = 11;
         if (blurAmount % 2 == 0)
         {
+            fprintf(stderr, "ERROR: Gaussian blur amount must be an odd number!\n");
             return hipErrorInvalidValue;
         }
 
@@ -204,7 +205,7 @@ hipError_t apply_filter_generic_templated(
 
     dim3 gridSize = compute_grid(width, height, blockSize);
 
-    printf("  Using GPU %d\n", device_id);
+    // printf("  Using GPU %d\n", device_id);
 
     launch_kernel(d_input.ptr, d_output.ptr, gridSize, blockSize, shared_bytes);
 

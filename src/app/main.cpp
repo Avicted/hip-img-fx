@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <filesystem>
+#include <chrono>
 
 #include "gpu_utils.h"
 #include "cli_parser.h"
@@ -29,7 +30,7 @@ int process_one(const std::string &input_path, const std::string &output_path, F
         return -1;
     }
 
-    print_image_info(&image);
+    // print_image_info(&image);
 
     image_t output_image;
     output_image.width = image.width;
@@ -67,6 +68,7 @@ int process_one(const std::string &input_path, const std::string &output_path, F
     }
 
     printf("Successfully saved output image: %s\n", output_path.c_str());
+    printf("------------------------------------------------------------\n");
 
     free_image(&image);
     free_image(&output_image);
@@ -75,6 +77,9 @@ int process_one(const std::string &input_path, const std::string &output_path, F
 
 int main(int argc, char **argv)
 {
+    using clock = std::chrono::steady_clock;
+    auto start_time = clock::now();
+
     printf("Running HIP image fx...\n");
 
     cli_args_t args = parse_cli_args(argc, argv);
@@ -95,6 +100,7 @@ int main(int argc, char **argv)
     bool input_is_dir = fs::is_directory(input_path);
     bool output_is_dir = fs::is_directory(output_path);
 
+    int ret = 0;
     if (input_is_dir && output_is_dir)
     {
         // Batch mode
@@ -111,7 +117,6 @@ int main(int argc, char **argv)
             }
 
             fs::path out_file = output_path / entry.path().filename();
-            printf("------------------------------------------------------------\n");
             printf("\nProcessing: %s -> %s\n", entry.path().string().c_str(), out_file.string().c_str());
             int res = process_one(entry.path().string(), out_file.string(), args.filter_type);
             if (res == 0)
@@ -124,16 +129,25 @@ int main(int argc, char **argv)
             }
         }
         printf("\nBatch processing complete. Success: %d, Failed: %d\n", processed, failed);
-        return failed == 0 ? 0 : 1;
+        ret = (failed == 0 ? 0 : 1);
     }
     else if (!input_is_dir && !output_is_dir)
     {
         // Single file mode
-        return process_one(args.input_file, args.output_file, args.filter_type);
+        ret = process_one(args.input_file, args.output_file, args.filter_type);
     }
     else
     {
         fprintf(stderr, "ERROR: Both --input and --output must be either files or directories.\n");
-        return -1;
+        ret = -1;
     }
+
+    auto end_time = clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+    int minutes = static_cast<int>(elapsed / 60000);
+    int seconds = static_cast<int>((elapsed % 60000) / 1000);
+    int millis = static_cast<int>(elapsed % 1000);
+    printf("Total processing time: %02dm %02ds %03dms\n", minutes, seconds, millis);
+
+    return ret;
 }

@@ -9,7 +9,6 @@
             "includePath": [
                 "${workspaceFolder}/src/core",
                 "${workspaceFolder}/src/core/filters",
-                "${workspaceFolder}/include",
                 "/opt/rocm/include",
                 "/usr/include",
                 "/usr/local/include"
@@ -18,7 +17,6 @@
                 "path": [
                     "${workspaceFolder}/src/core",
                     "${workspaceFolder}/src/core/filters",
-                    "${workspaceFolder}/include",
                     "/opt/rocm/include",
                     "/usr/include",
                     "/usr/local/include"

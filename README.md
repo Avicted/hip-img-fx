@@ -31,3 +31,9 @@ hip-img-fx/
 │   └── output_examples/
 └── README.md
 ```
+
+
+## Credits:
+
+Images:
+- example_01: https://unsplash.com/photos/pagoda-surrounded-by-trees-E_eWwM29wfU

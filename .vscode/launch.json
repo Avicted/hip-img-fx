@@ -7,11 +7,12 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/src/app/hip-img-fx",
             "args": [
-                "examples/input.png",
+                "--input",
+                "examples/example_01.jpg",
                 "--filter",
                 "grayscale",
                 "--output",
-                "examples/output.png"
+                "examples/example_01_output.jpg",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

@@ -1,5 +1,8 @@
 # app_sources = files('main.cpp', 'cli_parser.cpp')
-app_sources = files('main.cpp')
+app_sources = files(
+  'main.cpp',
+  'cli_parser.cpp'
+)
 
 executable(
   'hip-img-fx',

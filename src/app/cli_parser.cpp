@@ -4,10 +4,15 @@ void print_help()
 {
     printf("\nUsage: hip-img-fx [options]\n");
     printf("Options:\n");
-    printf("  --input <input_file>     Specifies the input file path.\n");
-    printf("  --output <output_file>   Specifies the output file path.\n");
-    printf("  --filter <filter_type>   Specifies the type of filter to apply (e.g., \"blur\", \"grayscale\").\n");
-    printf("  --help                   Displays this help information.\n");
+    printf("  --input <input_file|input_dir>     Specifies the input file or directory path.\n");
+    printf("  --output <output_file|output_dir>  Specifies the output file or directory path.\n");
+    printf("  --filter <filter_type>             Specifies the type of filter to apply (e.g., \"grayscale\", \"negative\", \"gaussian-blur\").\n");
+    printf("  --help                             Displays this help information.\n");
+    printf("\n");
+    printf("Notes:\n");
+    printf("  - For batch processing, specify both --input and --output as directories.\n");
+    printf("  - For single image processing, specify both as files.\n");
+    printf("  - Supported filters: grayscale, negative, gaussian-blur\n");
 }
 
 cli_args_t parse_cli_args(int argc, char **argv)

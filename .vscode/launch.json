@@ -8,11 +8,11 @@
             "program": "${workspaceFolder}/build/src/app/hip-img-fx",
             "args": [
                 "--input",
-                "examples/example_01.jpg",
+                "examples",
                 "--filter",
                 "grayscale",
                 "--output",
-                "examples/example_01_output_grayscale.jpg",
+                "examples/output",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

@@ -7,6 +7,7 @@ enum class FILTER_TYPE
     UNDEFINED,
     GRAYSCALE,
     NEGATIVE,
+    GAUSSIAN_BLUR,
 };
 
 inline void hip_errchk(hipError_t err, const char *file, int line);
@@ -49,3 +50,18 @@ __global__ void negative_kernel(
     int width,
     int height,
     int channels);
+
+hipError_t apply_gaussian_blur_filter(
+    unsigned char *input_image,
+    unsigned char *output_image,
+    int width,
+    int height,
+    int channels);
+
+__global__ void gaussian_blur_kernel(
+    const unsigned char *input_image,
+    unsigned char *output_image,
+    int width,
+    int height,
+    int channels,
+    int blurAmount);

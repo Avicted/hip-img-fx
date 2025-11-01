@@ -3,6 +3,7 @@ core_sources = files(
   'image.cpp',
   'filters/grayscale.hip.cpp',
   'filters/negative.hip.cpp',
+  'filters/gaussian_blur.hip.cpp',
 )
 
 core_lib = static_library(

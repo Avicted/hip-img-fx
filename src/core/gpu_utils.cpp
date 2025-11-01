@@ -73,6 +73,8 @@ std::string filter_type_to_string(FILTER_TYPE type)
         return "GRAYSCALE";
     case FILTER_TYPE::NEGATIVE:
         return "NEGATIVE";
+    case FILTER_TYPE::GAUSSIAN_BLUR:
+        return "GAUSSIAN_BLUR";
     default:
         return "UNKNOWN";
     }
@@ -92,6 +94,8 @@ int apply_filter(
         return apply_grayscale_filter(input_image, output_image, width, height, channels);
     case FILTER_TYPE::NEGATIVE:
         return apply_negative_filter(input_image, output_image, width, height, channels);
+    case FILTER_TYPE::GAUSSIAN_BLUR:
+        return apply_gaussian_blur_filter(input_image, output_image, width, height, channels);
     default:
         printf("ERROR: Unsupported filter type!\n");
         return -1;
@@ -223,6 +227,88 @@ hipError_t apply_negative_filter(
         width,
         height,
         channels);
+
+    HIP_ERRCHK(hipDeviceSynchronize());
+
+    // Copy result back to host
+    HIP_ERRCHK(hipMemcpy(
+        output_image,
+        d_output,
+        image_bytes,
+        hipMemcpyDeviceToHost));
+
+    // Free device memory
+    HIP_ERRCHK(hipFree(d_input));
+    HIP_ERRCHK(hipFree(d_output));
+
+    return hipSuccess;
+}
+
+hipError_t apply_gaussian_blur_filter(
+    unsigned char *input_image,
+    unsigned char *output_image,
+    int width,
+    int height,
+    int channels)
+{
+    int hip_device_count = get_hip_devices();
+    if (hip_device_count < 1)
+    {
+        fprintf(stderr, "ERROR: Could not find any HIP device!\n");
+        return hipErrorNoDevice;
+    }
+    printf("hip_device_count: %d\n", hip_device_count);
+
+    hipError_t err;
+
+    size_t image_bytes = width * height * channels * sizeof(unsigned char);
+
+    unsigned char *d_input = nullptr;
+    unsigned char *d_output = nullptr;
+
+    // Allocate device memory
+    HIP_ERRCHK(hipMalloc(reinterpret_cast<void **>(&d_input), image_bytes));
+    HIP_ERRCHK(hipMalloc(reinterpret_cast<void **>(&d_output), image_bytes));
+
+    // Copy data to device memory
+    HIP_ERRCHK(hipMemcpy(
+        d_input,
+        input_image,
+        image_bytes,
+        hipMemcpyHostToDevice));
+
+    // Kernel launch parameters
+    dim3 blockSize(16, 16);
+    dim3 gridSize(
+        (width + blockSize.x - 1) / blockSize.x,
+        (height + blockSize.y - 1) / blockSize.y);
+
+    HIP_ERRCHK(hipSetDevice(0));
+    printf("====================================================================\n");
+    printf("    Using GPU 0\n");
+
+    const int blurAmount = 11; // Must be odd, e.g., 3, 5, 7
+
+    if (blurAmount % 2 == 0)
+    {
+        fprintf(stderr, "ERROR: blurAmount must be odd!\n");
+        return hipErrorInvalidValue;
+    }
+
+    size_t shared_bytes = sizeof(float) * (size_t)blurAmount * (size_t)blurAmount;
+
+    hipLaunchKernelGGL(
+        gaussian_blur_kernel,
+        gridSize,
+        blockSize,
+        shared_bytes,
+        0,
+        d_input,
+        d_output,
+        width,
+        height,
+        channels,
+        blurAmount);
 
     HIP_ERRCHK(hipDeviceSynchronize());
 

@@ -38,6 +38,10 @@ cli_args_t parse_cli_args(int argc, char **argv)
             {
                 args.filter_type = FILTER_TYPE::NEGATIVE;
             }
+            else if (strcmp(argv[i], "gaussian-blur") == 0)
+            {
+                args.filter_type = FILTER_TYPE::GAUSSIAN_BLUR;
+            }
             else
             {
                 printf("Unknown filter type: %s\n", argv[i]);

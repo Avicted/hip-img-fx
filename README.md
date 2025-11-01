@@ -1,6 +1,6 @@
 # AMD HIP image filters
 
-Apply filters to images with the usage of a GPU. With CPU fallback option.
+Fast GPU-accelerated image filters (HIP) with a CPU fallback path for portability.
 
 ## Prerequisites
 - AMD ROCm

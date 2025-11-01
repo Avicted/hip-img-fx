@@ -22,7 +22,6 @@ int main(int argc, char **argv)
 
     print_image_info(&image);
 
-    // Allocate output image
     image_t output_image;
     output_image.width = image.width;
     output_image.height = image.height;
@@ -50,7 +49,6 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    // Save output image
     if (!save_image(args.output_file, &output_image))
     {
         fprintf(stderr, "ERROR: Could not save output image!\n");

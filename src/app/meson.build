@@ -12,5 +12,4 @@ executable(
   'hip-img-fx',
   app_sources,
   include_directories: [include_directories('../core', '/opt/rocm/include')],
-  cpp_args: ['-O2']
 )

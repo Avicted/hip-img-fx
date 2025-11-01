@@ -12,6 +12,7 @@ typedef struct
     const char *input_file;
     const char *output_file;
     FILTER_TYPE filter_type;
+    bool use_cpu;
 } cli_args_t;
 
 void print_help();

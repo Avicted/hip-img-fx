@@ -65,7 +65,8 @@ hipError_t prepare_device_buffers(
 
 hipError_t copy_back_and_finish(unsigned char *output_image, DeviceBuffer &d_output, size_t image_bytes);
 
-int apply_filter(
+hipError_t apply_filter(
+    bool use_cpu,
     FILTER_TYPE filter_type,
     unsigned char *input_image,
     unsigned char *output_image,

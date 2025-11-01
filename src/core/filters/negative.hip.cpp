@@ -20,3 +20,23 @@ extern "C" __global__ void negative_kernel(
         }
     }
 }
+
+void negative_cpu(
+    const unsigned char *input_image,
+    unsigned char *output_image,
+    int width,
+    int height,
+    int channels)
+{
+    const int total_pixels = width * height;
+
+    for (int i = 0; i < total_pixels; i++)
+    {
+        int idx = i * channels;
+
+        for (int c = 0; c < channels; c++)
+        {
+            output_image[idx + c] = 255 - input_image[idx + c];
+        }
+    }
+}

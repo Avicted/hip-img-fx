@@ -28,21 +28,5 @@
             "command": "ninja -C build clean",
             "problemMatcher": []
         },
-        {
-            "label": "Run hip-img-fx",
-            "type": "shell",
-            "command": "./build/src/app/hip-img-fx",
-            "dependsOn": [
-                "Meson: Build"
-            ],
-            "group": "none",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared"
-            },
-            "problemMatcher": []
-        }
     ]
 }

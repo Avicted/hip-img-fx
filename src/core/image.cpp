@@ -42,7 +42,6 @@ void free_image(image_t *img)
 bool save_image(const char *filename, const image_t *img)
 {
     int success = 0;
-    // Determine file format based on file extension
     const char *ext = strrchr(filename, '.');
     if (ext)
     {

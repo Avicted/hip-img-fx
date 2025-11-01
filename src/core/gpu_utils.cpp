@@ -80,7 +80,8 @@ std::string filter_type_to_string(FILTER_TYPE type)
     }
 }
 
-int apply_filter(
+hipError_t apply_filter(
+    bool use_cpu,
     FILTER_TYPE filter_type,
     unsigned char *input_image,
     unsigned char *output_image,
@@ -92,6 +93,12 @@ int apply_filter(
     {
     case FILTER_TYPE::GRAYSCALE:
     {
+        if (use_cpu)
+        {
+            grayscale_cpu(input_image, output_image, width, height, channels);
+            return hipSuccess;
+        }
+
         return apply_filter_generic_templated(input_image, output_image, width, height, channels,
                                               [&](unsigned char *d_in, unsigned char *d_out, dim3 grid, dim3 block, size_t shared_bytes)
                                               {
@@ -110,6 +117,12 @@ int apply_filter(
     }
     case FILTER_TYPE::NEGATIVE:
     {
+        if (use_cpu)
+        {
+            negative_cpu(input_image, output_image, width, height, channels);
+            return hipSuccess;
+        }
+
         return apply_filter_generic_templated(input_image, output_image, width, height, channels,
                                               [&](unsigned char *d_in, unsigned char *d_out, dim3 grid, dim3 block, size_t shared_bytes)
                                               {
@@ -135,6 +148,12 @@ int apply_filter(
             return hipErrorInvalidValue;
         }
 
+        if (use_cpu)
+        {
+            gaussian_blur_cpu(input_image, output_image, width, height, channels, blurAmount);
+            return hipSuccess;
+        }
+
         size_t shared_bytes = sizeof(float) * (size_t)blurAmount * (size_t)blurAmount;
 
         return apply_filter_generic_templated(input_image, output_image, width, height, channels, [&](unsigned char *d_in, unsigned char *d_out, dim3 grid, dim3 block, size_t sb)
@@ -154,7 +173,7 @@ int apply_filter(
     default:
     {
         printf("ERROR: Unsupported filter type!\n");
-        return -1;
+        return hipErrorInvalidValue;
     }
     }
 }

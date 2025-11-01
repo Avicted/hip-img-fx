@@ -1,26 +1,48 @@
 # AMD HIP image filters
 
-Apply filters to images with the usage of a GPU.
+Apply filters to images with the usage of a GPU. With CPU fallback option.
 
 ## Prerequisites
 - AMD ROCm
 
-Tested on:
-```bash
-hipcc --version
-HIP version: 6.4.43484-123eb5128
+
+### Tested on:
+
+hipcc --version\
+HIP version: 6.4.43484-123eb5128\
 AMD clang version 19.0.0git (/srcdest/rocm-llvm d366fa84f3fdcbd4b10847ebd5db572ae12a34fb)
+
+
+
+## Compilation
+```bash
+meson setup build --native-file native/hip.ini --reconfigure
+ninja -C build
 ```
 
-
 ## Usage
+
+### Help
 ```bash
-# Setup
-meson setup build --native-file native/hip.ini --reconfigure
+./build/src/app/hip-img-fx --help
+Running HIP image fx...
 
-# Build
-ninja -C build
+Usage: hip-img-fx [options]
+Options:
+  --input <input_file|input_dir>     Specifies the input file or directory path.
+  --output <output_file|output_dir>  Specifies the output file or directory path.
+  --filter <filter_type>             Specifies the type of filter to apply (e.g., "grayscale", "negative", "gaussian-blur").
+  --use-cpu                          Use CPU for processing instead of GPU.
+  --help                             Displays this help information.
 
+Notes:
+  - For batch processing, specify both --input and --output as directories.
+  - For single image processing, specify both as files.
+  - Supported filters: grayscale, negative, gaussian-blur
+```
+
+### Examples
+```bash
 # Launch (single image)
 ./build/src/app/hip-img-fx \
     --input examples/example_01.jpg \
@@ -51,6 +73,7 @@ Running HIP image fx...
 Input: examples
 Output: examples/output
 Filter Type: GRAYSCALE
+Using GPU for processing.
     HIP Device Count: 1
     Device 0: AMD Radeon RX 6900 XT
         Compute Capability: ------------ = 10.3
@@ -93,8 +116,23 @@ Successfully saved output image: examples/output/example_05.jpg
 ------------------------------------------------------------
 
 Batch processing complete. Success: 5, Failed: 0
-Total processing time: 00m 00s 889ms
+Total processing time: 00m 00s 897ms
 ```
+
+## Benchmark
+Tested on a batch of 6499 butterfly images from [Kaggle](https://www.kaggle.com/datasets/phucthaiv02/butterfly-image-classification):
+
+
+| Device  |                 Total Time | Images / sec | Speedup vs CPU |
+| ------- | -------------------------: | -----------: | -------------: |
+| **CPU** | 3 min 16.547 s (196.547 s) |    **33.07** |             1× |
+| **GPU** |                   10.670 s |   **609.09** |     **18.42×** |
+
+GPU is ≈ **1742%** faster than CPU with a Gaussian blur filter (blurAmount = 11) with a batch of 6499 images.
+
+Both CPU and GPU processed all 6499 images successfully (0 failed).
+
+
 
 ## Credits:
 
@@ -104,3 +142,8 @@ Images (unsplash.com):
 - [example_03](https://unsplash.com/photos/selective-focus-photo-of-giraffe-D6TqIa-tWRY)
 - [example_04](https://unsplash.com/photos/black-white-and-yellow-bird-on-brown-tree-branch-during-daytime-vjFC9OjrOtA)
 - [example_05](https://unsplash.com/photos/two-white-ferrets-zQTw2g6JY6U)
+
+
+## License
+MIT License. See [LICENSE](LICENSE) for details.
+

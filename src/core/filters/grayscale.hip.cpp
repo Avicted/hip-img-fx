@@ -32,3 +32,33 @@ extern "C" __global__ void grayscale_kernel(
         }
     }
 }
+
+void grayscale_cpu(
+    const unsigned char *input_image,
+    unsigned char *output_image,
+    int width,
+    int height,
+    int channels)
+{
+    const int total_pixels = width * height;
+
+    for (int i = 0; i < total_pixels; i++)
+    {
+        int idx = i * channels;
+
+        unsigned char r = input_image[idx + 0];
+        unsigned char g = input_image[idx + 1];
+        unsigned char b = input_image[idx + 2];
+
+        unsigned char gray = static_cast<unsigned char>(0.21f * r + 0.72f * g + 0.07f * b);
+
+        output_image[idx + 0] = gray;
+        output_image[idx + 1] = gray;
+        output_image[idx + 2] = gray;
+
+        if (channels == 4)
+        {
+            output_image[idx + 3] = input_image[idx + 3];
+        }
+    }
+}

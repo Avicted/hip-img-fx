@@ -13,6 +13,7 @@
                 "grayscale",
                 "--output",
                 "examples/output",
+                // "--use-cpu",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -29,16 +30,5 @@
             ],
             "preLaunchTask": "Meson: Build"
         },
-        {
-            "name": "Run hip-img-fx (no debug)",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/src/app/hip-img-fx",
-            "args": [],
-            "cwd": "${workspaceFolder}",
-            "externalConsole": true,
-            "MIMode": "gdb",
-            "preLaunchTask": "Meson: Build"
-        }
     ]
 }

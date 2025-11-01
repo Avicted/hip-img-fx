@@ -21,7 +21,7 @@ bool has_supported_ext(const fs::path &p)
     return std::find(supported_exts.begin(), supported_exts.end(), ext) != supported_exts.end();
 }
 
-int process_one(const std::string &input_path, const std::string &output_path, FILTER_TYPE filter_type)
+int process_one(bool use_cpu, const std::string &input_path, const std::string &output_path, FILTER_TYPE filter_type)
 {
     image_t image = load_image(input_path.c_str());
     if (image.data == nullptr)
@@ -46,6 +46,7 @@ int process_one(const std::string &input_path, const std::string &output_path, F
     }
 
     if (apply_filter(
+            use_cpu,
             filter_type,
             image.data,
             output_image.data,
@@ -67,8 +68,8 @@ int process_one(const std::string &input_path, const std::string &output_path, F
         return -1;
     }
 
-    printf("Successfully saved output image: %s\n", output_path.c_str());
-    printf("------------------------------------------------------------\n");
+    // printf("Successfully saved output image: %s\n", output_path.c_str());
+    // printf("------------------------------------------------------------\n");
 
     free_image(&image);
     free_image(&output_image);
@@ -81,17 +82,24 @@ int main(int argc, char **argv)
     auto start_time = clock::now();
 
     printf("Running HIP image fx...\n");
+    bool use_cpu = false;
 
     cli_args_t args = parse_cli_args(argc, argv);
     printf("Input: %s\n", args.input_file);
     printf("Output: %s\n", args.output_file);
     printf("Filter Type: %s\n", filter_type_to_string(args.filter_type).c_str());
+    use_cpu = args.use_cpu;
+    printf("Using %s for processing.\n", (use_cpu ? "CPU" : "GPU"));
 
-    int hip_device_count = get_hip_devices();
-    if (hip_device_count < 1)
+    if (!use_cpu)
     {
-        fprintf(stderr, "ERROR: Could not find any HIP device!\n");
-        return hipErrorNoDevice;
+        int hip_device_count = get_hip_devices();
+        if (hip_device_count < 1)
+        {
+            fprintf(stderr, "ERROR: Could not find any HIP device!\n");
+            printf("Falling back to CPU processing...\n");
+            use_cpu = true;
+        }
     }
 
     fs::path input_path(args.input_file);
@@ -117,8 +125,8 @@ int main(int argc, char **argv)
             }
 
             fs::path out_file = output_path / entry.path().filename();
-            printf("\nProcessing: %s -> %s\n", entry.path().string().c_str(), out_file.string().c_str());
-            int res = process_one(entry.path().string(), out_file.string(), args.filter_type);
+            // printf("\nProcessing: %s -> %s\n", entry.path().string().c_str(), out_file.string().c_str());
+            int res = process_one(use_cpu, entry.path().string(), out_file.string(), args.filter_type);
             if (res == 0)
             {
                 processed++;
@@ -134,7 +142,7 @@ int main(int argc, char **argv)
     else if (!input_is_dir && !output_is_dir)
     {
         // Single file mode
-        ret = process_one(args.input_file, args.output_file, args.filter_type);
+        ret = process_one(use_cpu, args.input_file, args.output_file, args.filter_type);
     }
     else
     {

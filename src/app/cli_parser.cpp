@@ -7,6 +7,7 @@ void print_help()
     printf("  --input <input_file|input_dir>     Specifies the input file or directory path.\n");
     printf("  --output <output_file|output_dir>  Specifies the output file or directory path.\n");
     printf("  --filter <filter_type>             Specifies the type of filter to apply (e.g., \"grayscale\", \"negative\", \"gaussian-blur\").\n");
+    printf("  --use-cpu                          Use CPU for processing instead of GPU.\n");
     printf("  --help                             Displays this help information.\n");
     printf("\n");
     printf("Notes:\n");
@@ -53,6 +54,10 @@ cli_args_t parse_cli_args(int argc, char **argv)
                 print_help();
                 exit(1);
             }
+        }
+        else if (strcmp(argv[i], "--use-cpu") == 0)
+        {
+            args.use_cpu = true;
         }
         else if (strcmp(argv[i], "--help") == 0)
         {

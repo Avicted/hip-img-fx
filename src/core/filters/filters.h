@@ -23,3 +23,25 @@ extern "C" __global__ void gaussian_blur_kernel(
     int height,
     int channels,
     int blurAmount);
+
+void grayscale_cpu(
+    const unsigned char *input_image,
+    unsigned char *output_image,
+    int width,
+    int height,
+    int channels);
+
+void gaussian_blur_cpu(
+    const unsigned char *input_image,
+    unsigned char *output_image,
+    int width,
+    int height,
+    int channels,
+    int blurAmount);
+
+void negative_cpu(
+    const unsigned char *input_image,
+    unsigned char *output_image,
+    int width,
+    int height,
+    int channels);

@@ -91,6 +91,7 @@ int apply_filter(
     switch (filter_type)
     {
     case FILTER_TYPE::GRAYSCALE:
+    {
         return apply_filter_generic_templated(input_image, output_image, width, height, channels,
                                               [&](unsigned char *d_in, unsigned char *d_out, dim3 grid, dim3 block, size_t shared_bytes)
                                               {
@@ -106,7 +107,9 @@ int apply_filter(
                                                       height,
                                                       channels);
                                               });
+    }
     case FILTER_TYPE::NEGATIVE:
+    {
         return apply_filter_generic_templated(input_image, output_image, width, height, channels,
                                               [&](unsigned char *d_in, unsigned char *d_out, dim3 grid, dim3 block, size_t shared_bytes)
                                               {
@@ -122,6 +125,7 @@ int apply_filter(
                                                       height,
                                                       channels);
                                               });
+    }
     case FILTER_TYPE::GAUSSIAN_BLUR:
     {
         const int blurAmount = 11; // must be odd
@@ -147,8 +151,10 @@ int apply_filter(
                                                     blurAmount); }, dim3(16, 16), 0, shared_bytes);
     }
     default:
+    {
         printf("ERROR: Unsupported filter type!\n");
         return -1;
+    }
     }
 }
 
@@ -207,7 +213,6 @@ hipError_t apply_filter_generic_templated(
     printf("====================================================================\n");
     printf("    Using GPU %d\n", device_id);
 
-    // Templated launcher is inlined; no std::function overhead
     launch_kernel(d_input.ptr, d_output.ptr, gridSize, blockSize, shared_bytes);
 
     HIP_ERRCHK(hipDeviceSynchronize());

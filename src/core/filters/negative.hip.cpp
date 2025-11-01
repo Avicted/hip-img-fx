@@ -1,6 +1,6 @@
 #include "gpu_utils.h"
 
-__global__ void negative_kernel(
+extern "C" __global__ void negative_kernel(
     const unsigned char *input_image,
     unsigned char *output_image,
     int width,

@@ -2,7 +2,7 @@
 #include <math.h>
 #include <stdint.h>
 
-__global__ void gaussian_blur_kernel(
+extern "C" __global__ void gaussian_blur_kernel(
     const unsigned char *input_image,
     unsigned char *output_image,
     int width,

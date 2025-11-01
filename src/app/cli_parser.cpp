@@ -2,7 +2,7 @@
 
 void print_help()
 {
-    printf("Usage: hip-img-fx [options]\n");
+    printf("\nUsage: hip-img-fx [options]\n");
     printf("Options:\n");
     printf("  --input <input_file>     Specifies the input file path.\n");
     printf("  --output <output_file>   Specifies the output file path.\n");
@@ -60,6 +60,28 @@ cli_args_t parse_cli_args(int argc, char **argv)
             print_help();
             exit(1);
         }
+    }
+
+    bool has_error = false;
+    if (args.input_file == nullptr)
+    {
+        printf("Error: --input argument is required.\n");
+        has_error = true;
+    }
+    if (args.output_file == nullptr)
+    {
+        printf("Error: --output argument is required.\n");
+        has_error = true;
+    }
+    if (args.filter_type == FILTER_TYPE::UNDEFINED)
+    {
+        printf("Error: --filter argument is required.\n");
+        has_error = true;
+    }
+    if (has_error)
+    {
+        print_help();
+        exit(1);
     }
 
     return args;

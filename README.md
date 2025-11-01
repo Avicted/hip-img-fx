@@ -2,6 +2,16 @@
 
 Apply filters to images with the usage of a GPU.
 
+## Prerequisites
+- AMD ROCm
+
+Tested on:
+```bash
+hipcc --version
+HIP version: 6.4.43484-123eb5128
+AMD clang version 19.0.0git (/srcdest/rocm-llvm d366fa84f3fdcbd4b10847ebd5db572ae12a34fb)
+```
+
 
 ## Usage
 ```bash

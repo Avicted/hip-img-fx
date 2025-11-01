@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "cstdlib": "cpp"
+    },
+    "cmake.configureOnOpen": false,
+    "mesonbuild.configureOnOpen": true,
+    "C_Cpp.default.configurationProvider": "mesonbuild.mesonbuild",
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json"
+}

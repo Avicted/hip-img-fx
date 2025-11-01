@@ -68,8 +68,8 @@ int process_one(bool use_cpu, const std::string &input_path, const std::string &
         return -1;
     }
 
-    // printf("Successfully saved output image: %s\n", output_path.c_str());
-    // printf("------------------------------------------------------------\n");
+    printf("Successfully saved output image: %s\n", output_path.c_str());
+    printf("------------------------------------------------------------\n");
 
     free_image(&image);
     free_image(&output_image);
@@ -125,7 +125,7 @@ int main(int argc, char **argv)
             }
 
             fs::path out_file = output_path / entry.path().filename();
-            // printf("\nProcessing: %s -> %s\n", entry.path().string().c_str(), out_file.string().c_str());
+            printf("\nProcessing: %s -> %s\n", entry.path().string().c_str(), out_file.string().c_str());
             int res = process_one(use_cpu, entry.path().string(), out_file.string(), args.filter_type);
             if (res == 0)
             {

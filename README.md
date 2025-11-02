@@ -121,7 +121,7 @@ Tested on a batch of 6499 butterfly images from [Kaggle](https://www.kaggle.com/
 > Hardware:
 >  - AMD Radeon RX 6900 XT
 >  - AMD Ryzen 3950X (32 threads OpenMP)
->  - HIP build (-march=native --offload-arch=gfx1030)
+>  - HIP build (-march=native --offload-arch=gfx1030 -ffast-math)
 
 ```bash
 hipcc --version\

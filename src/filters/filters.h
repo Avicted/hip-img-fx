@@ -2,6 +2,8 @@
 
 #include <hip/hip_runtime.h>
 
+#include "../core/gpu_utils.h"
+
 extern "C" __global__ void grayscale_kernel(
     const unsigned char *input,
     unsigned char *output,

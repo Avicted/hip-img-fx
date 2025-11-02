@@ -1,6 +1,6 @@
 #include <chrono>
 
-#include "cli_parser.h"
+#include "../cli/cli_parser.h"
 #include "process.h"
 
 int main(int argc, char **argv)

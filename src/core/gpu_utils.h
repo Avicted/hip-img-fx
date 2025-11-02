@@ -8,7 +8,7 @@
 #include <filesystem>
 
 #include "image.h"
-#include "filters/filters.h"
+#include "../filters/filters.h"
 
 #define GAUSSIAN_BLUR_AMOUNT 11 // Has to be an odd number
 

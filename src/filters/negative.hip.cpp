@@ -1,4 +1,4 @@
-#include "../gpu_utils.h"
+#include "filters.h"
 
 extern "C" __global__ void negative_kernel(
     const unsigned char *input,

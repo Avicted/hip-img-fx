@@ -1,6 +1,6 @@
 #pragma once
 
-#include "gpu_utils.h"
+#include "../core/gpu_utils.h"
 
 #define GPU_CHUNK_SIZE 64 // tune based on GPU memory
 

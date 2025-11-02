@@ -10,11 +10,11 @@ project('hip-img-fx', 'cpp',
 add_project_arguments('-D__HIP_PLATFORM_AMD__', language: 'cpp')
 
 app_sources = files(
-  'src/main.cpp',
-  'src/cli_parser.cpp',
-  'src/process.cpp',
-  'src/gpu_utils.cpp',
-  'src/image.cpp',
+  'src/app/main.cpp',
+  'src/app/process.cpp',
+  'src/cli/cli_parser.cpp',
+  'src/core/gpu_utils.cpp',
+  'src/core/image.cpp',
   'src/filters/grayscale.hip.cpp',
   'src/filters/negative.hip.cpp',
   'src/filters/gaussian_blur.hip.cpp',

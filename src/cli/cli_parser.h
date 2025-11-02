@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <filesystem>
 
-#include "gpu_utils.h"
+#include "../core/gpu_utils.h"
 
 typedef struct
 {

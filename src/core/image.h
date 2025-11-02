@@ -1,5 +1,11 @@
 #pragma once
 
+#include <filesystem>
+#include <vector>
+#include <algorithm>
+
+namespace fs = std::filesystem;
+
 typedef struct
 {
     unsigned char *data;
@@ -16,6 +22,7 @@ struct image_meta_t
     int channels;
 };
 
+bool has_supported_ext(const fs::path &p);
 image_t load_image(const char *filename);
 void print_image_info(const image_t *img);
 void free_image(image_t *img);

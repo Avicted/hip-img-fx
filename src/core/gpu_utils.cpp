@@ -1,18 +1,4 @@
 #include "gpu_utils.h"
-#include <cstdio>
-#include <cstdlib>
-
-// HIP error handling macro
-#define HIP_ERRCHK(err) (hip_errchk(err, __FILE__, __LINE__))
-
-inline void hip_errchk(hipError_t err, const char *file, int line)
-{
-    if (err != hipSuccess)
-    {
-        printf("\n%s in %s at line %d\n", hipGetErrorString(err), file, line);
-        exit(EXIT_FAILURE);
-    }
-}
 
 int get_hip_devices(void)
 {
@@ -65,109 +51,21 @@ int get_hip_devices(void)
     return deviceCount;
 }
 
-inline dim3 compute_grid(int width, int height, const dim3 &block)
+std::string filter_type_to_string(FILTER_TYPE type)
 {
-    return dim3((width + block.x - 1) / block.x, (height + block.y - 1) / block.y);
-}
-
-// ------------------------ batch helpers ------------------------
-
-hipError_t prepare_device_batch(
-    std::vector<image_t> &host_in,
-    std::vector<image_t> &host_out,
-    DeviceBatch &batch,
-    int device_id)
-{
-    batch.N = (int)host_in.size();
-    int N = batch.N;
-    HIP_ERRCHK(hipSetDevice(device_id));
-
-    // compute total bytes
-    batch.total_bytes = 0;
-    for (auto &img : host_in)
-        batch.total_bytes += size_t(img.width) * img.height * img.channels;
-
-    // allocate single pixel buffer
-    HIP_ERRCHK(hipMalloc(&batch.d_pixels, batch.total_bytes));
-
-    // allocate image_t array
-    HIP_ERRCHK(hipMalloc(&batch.d_images, sizeof(image_t) * N));
-
-    // copy image_t structs and patch .data pointers
-    size_t offset = 0;
-    std::vector<image_t> tmp_images(N);
-    for (int i = 0; i < N; ++i)
+    switch (type)
     {
-        size_t bytes = size_t(host_in[i].width) * host_in[i].height * host_in[i].channels;
-        unsigned char *d_ptr = batch.d_pixels + offset;
-        HIP_ERRCHK(hipMemcpy(d_ptr, host_in[i].data, bytes, hipMemcpyHostToDevice));
-
-        image_t tmp = host_in[i];
-        tmp.data = d_ptr;
-        tmp_images[i] = tmp;
-
-        offset += bytes;
+    case FILTER_TYPE::UNDEFINED:
+        return "UNDEFINED";
+    case FILTER_TYPE::GRAYSCALE:
+        return "GRAYSCALE";
+    case FILTER_TYPE::NEGATIVE:
+        return "NEGATIVE";
+    case FILTER_TYPE::GAUSSIAN_BLUR:
+        return "GAUSSIAN_BLUR";
+    default:
+        return "UNKNOWN";
     }
-
-    // copy structs to device
-    HIP_ERRCHK(hipMemcpy(batch.d_images, tmp_images.data(), sizeof(image_t) * N, hipMemcpyHostToDevice));
-
-    return hipSuccess;
-}
-
-hipError_t copy_back_batch(
-    std::vector<image_t> &host_out,
-    DeviceBatch &batch)
-{
-    size_t offset = 0;
-    for (int i = 0; i < batch.N; ++i)
-    {
-        size_t bytes = size_t(host_out[i].width) * host_out[i].height * host_out[i].channels;
-        HIP_ERRCHK(hipMemcpy(host_out[i].data, batch.d_images[i].data + offset, bytes, hipMemcpyDeviceToHost));
-        offset += bytes;
-    }
-    return hipSuccess;
-}
-
-void free_batch(DeviceBatch &batch)
-{
-    if (batch.d_images)
-        hipFree(batch.d_images);
-    if (batch.d_pixels)
-        hipFree(batch.d_pixels);
-    batch = DeviceBatch{};
-}
-
-// ------------------------ generic templated GPU call ------------------------
-
-template <typename Launcher>
-hipError_t apply_filter_generic_templated(
-    std::vector<image_t> &input_images,
-    std::vector<image_t> &output_images,
-    Launcher &&launch_kernel,
-    dim3 blockSize,
-    int device_id,
-    size_t shared_bytes)
-{
-    DeviceBatch batch;
-    HIP_ERRCHK(prepare_device_batch(input_images, output_images, batch, device_id));
-
-    // compute grid based on first image
-    int w = input_images[0].width;
-    int h = input_images[0].height;
-
-    dim3 grid = compute_grid(w, h, blockSize);
-    grid.z = batch.N; // batch dimension
-
-    launch_kernel(batch.d_images, batch.d_images, grid, blockSize, shared_bytes);
-
-    HIP_ERRCHK(hipDeviceSynchronize());
-
-    HIP_ERRCHK(copy_back_batch(output_images, batch));
-
-    free_batch(batch);
-
-    return hipSuccess;
 }
 
 hipError_t apply_filter_cpu(
@@ -313,26 +211,9 @@ hipError_t apply_filter_gpu(
     }
 
     // Free device memory
-    hipFree(d_input.ptr);
-    hipFree(d_output.ptr);
-    hipFree(d_metas.ptr);
+    HIP_ERRCHK(hipFree(d_input.ptr));
+    HIP_ERRCHK(hipFree(d_output.ptr));
+    HIP_ERRCHK(hipFree(d_metas.ptr));
 
     return hipSuccess;
-}
-
-std::string filter_type_to_string(FILTER_TYPE type)
-{
-    switch (type)
-    {
-    case FILTER_TYPE::UNDEFINED:
-        return "UNDEFINED";
-    case FILTER_TYPE::GRAYSCALE:
-        return "GRAYSCALE";
-    case FILTER_TYPE::NEGATIVE:
-        return "NEGATIVE";
-    case FILTER_TYPE::GAUSSIAN_BLUR:
-        return "GAUSSIAN_BLUR";
-    default:
-        return "UNKNOWN";
-    }
 }

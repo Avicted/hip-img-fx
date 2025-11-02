@@ -22,12 +22,7 @@ extern "C" __global__ void negative_kernel(
     }
 
     const image_meta_t &meta = metas[img_idx];
-    int pixel_idx = idx - meta.offset; // index inside this image
-
-    int c = pixel_idx % meta.channels;
-    int pos_in_image = pixel_idx / meta.channels;
-    int x = pos_in_image % meta.width;
-    int y = pos_in_image / meta.width;
+    int pixel_idx = idx - meta.offset;
 
     // Apply negative per channel
     output[meta.offset + pixel_idx] = 255 - input[meta.offset + pixel_idx];

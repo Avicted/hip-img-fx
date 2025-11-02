@@ -6,6 +6,15 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "vendor/stb_image_write.h"
 
+const std::vector<std::string> supported_exts = {".jpg", ".jpeg", ".png", ".bmp", ".tga"};
+
+bool has_supported_ext(const fs::path &p)
+{
+    std::string ext = p.extension().string();
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+    return std::find(supported_exts.begin(), supported_exts.end(), ext) != supported_exts.end();
+}
+
 image_t load_image(const char *filename)
 {
     image_t img;

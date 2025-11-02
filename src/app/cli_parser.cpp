@@ -94,7 +94,6 @@ cli_args_t parse_cli_args(int argc, char **argv)
         exit(1);
     }
 
-    // Warn if input and output directories are the same
     namespace fs = std::filesystem;
     fs::path input_path(args.input_file);
     fs::path output_path(args.output_file);
@@ -117,6 +116,10 @@ cli_args_t parse_cli_args(int argc, char **argv)
             }
         }
     }
+
+    printf("Input: %s\n", args.input_file);
+    printf("Output: %s\n", args.output_file);
+    printf("Filter Type: %s\n", filter_type_to_string(args.filter_type).c_str());
 
     return args;
 }

@@ -1,17 +1,11 @@
-#include <hip/hip_runtime.h>
-#include <math.h>
-#include <stdint.h>
-#include <cmath>
-#include <vector>
-
-#include "image.h"
+#include "gpu_utils.h"
 
 extern "C" __global__ void gaussian_blur_kernel(
     const unsigned char *input,
     unsigned char *output,
     const image_meta_t *metas,
     int num_images,
-    int blurAmount) // must be odd
+    int blurAmount)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -88,11 +82,6 @@ extern "C" __global__ void gaussian_blur_kernel(
 
     output[meta.offset + pixel_idx] = static_cast<unsigned char>(outv);
 }
-
-#include <vector>
-#include <cmath>
-#include <algorithm>
-#include <omp.h>
 
 void gaussian_blur_cpu(
     const unsigned char *input_image,

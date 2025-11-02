@@ -5,9 +5,21 @@
 
 #include <vector>
 #include <string>
+#include <filesystem>
 
 #include "image.h"
 #include "filters/filters.h"
+
+#define HIP_ERRCHK(err) (hip_errchk(err, __FILE__, __LINE__))
+
+inline void hip_errchk(hipError_t err, const char *file, int line)
+{
+    if (err != hipSuccess)
+    {
+        fprintf(stderr, "\n%s in %s at line %d\n", hipGetErrorString(err), file, line);
+        exit(EXIT_FAILURE);
+    }
+}
 
 enum class FILTER_TYPE
 {
@@ -34,7 +46,10 @@ struct DeviceBuffer
     DeviceBuffer &operator=(DeviceBuffer &&o) noexcept
     {
         if (ptr)
-            hipFree(ptr);
+        {
+            HIP_ERRCHK(hipFree(ptr));
+        }
+
         ptr = o.ptr;
         size = o.size;
         o.ptr = nullptr;
@@ -44,8 +59,16 @@ struct DeviceBuffer
     ~DeviceBuffer()
     {
         if (ptr)
-            hipFree(ptr);
+        {
+            hipError_t err = hipFree(ptr);
+            if (err != hipSuccess && err != hipErrorInvalidValue)
+            {
+                fprintf(stderr, "hipFree failed: %s\n", hipGetErrorString(err));
+            }
+            ptr = nullptr;
+        }
     }
+
     hipError_t allocate(size_t bytes)
     {
         size = bytes;
@@ -63,19 +86,7 @@ struct DeviceBatch
 
 inline void hip_errchk(hipError_t err, const char *file, int line);
 int get_hip_devices(void);
-inline dim3 compute_grid(int width, int height, const dim3 &block = dim3(16, 16));
-
-hipError_t prepare_device_batch(
-    std::vector<image_t> &host_in,
-    std::vector<image_t> &host_out,
-    DeviceBatch &batch,
-    int device_id = 0);
-
-hipError_t copy_back_batch(
-    std::vector<image_t> &host_out,
-    DeviceBatch &batch);
-
-void free_batch(DeviceBatch &batch);
+std::string filter_type_to_string(FILTER_TYPE type);
 
 hipError_t apply_filter_cpu(
     FILTER_TYPE filter_type,
@@ -89,16 +100,3 @@ hipError_t apply_filter_gpu(
     FILTER_TYPE filter_type,
     std::vector<image_t> &input_images,
     std::vector<image_t> &output_images);
-
-template <typename Launcher>
-hipError_t apply_filter_generic_templated(
-    std::vector<image_t> &input_images,
-    std::vector<image_t> &output_images,
-    Launcher &&launch_kernel,
-    dim3 blockSize = dim3(16, 16),
-    int device_id = 0,
-    size_t shared_bytes = 0);
-
-int get_hip_devices(void);
-
-std::string filter_type_to_string(FILTER_TYPE type);

@@ -1,6 +1,7 @@
 app_sources = files(
   'main.cpp',
   'cli_parser.cpp',
+  'process.cpp',
   '../core/gpu_utils.cpp',
   '../core/image.cpp',
   '../core/filters/grayscale.hip.cpp',

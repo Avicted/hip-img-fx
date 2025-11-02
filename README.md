@@ -4,6 +4,8 @@ Fast GPU-accelerated image filters (HIP) with a CPU fallback path for portabilit
 
 ## Prerequisites
 - AMD ROCm
+- OpenMP
+- Meson build system
 
 
 ### Tested on:
@@ -44,13 +46,13 @@ Notes:
 ### Examples
 ```bash
 # Launch (single image)
-./build/src/app/hip-img-fx \
+./build/hip-img-fx \
     --input examples/example_01.jpg \
     --filter grayscale \
     --output examples/example_01_output_grayscale.jpg
 
 # Launch batch
-./build/src/app/hip-img-fx \
+./build/hip-img-fx \
     --input examples \
     --filter grayscale \
     --output examples/output
@@ -64,7 +66,7 @@ Notes:
 
 ### Output example
 ```bash
-~ ./build/src/app/hip-img-fx \
+~ ./build/hip-img-fx \
     --input examples \
     --filter grayscale \
     --output examples/output
@@ -94,43 +96,26 @@ Using GPU for processing.
         Memory Bus Width: -------------- = 256
         Peak Memory Bandwidth: --------- = 64.000000
 
-
-Processing: examples/example_01.jpg -> examples/output/example_01.jpg
-Successfully saved output image: examples/output/example_01.jpg
-------------------------------------------------------------
-
-Processing: examples/example_02.jpg -> examples/output/example_02.jpg
-Successfully saved output image: examples/output/example_02.jpg
-------------------------------------------------------------
-
-Processing: examples/example_03.jpg -> examples/output/example_03.jpg
-Successfully saved output image: examples/output/example_03.jpg
-------------------------------------------------------------
-
-Processing: examples/example_04.jpg -> examples/output/example_04.jpg
-Successfully saved output image: examples/output/example_04.jpg
-------------------------------------------------------------
-
-Processing: examples/example_05.jpg -> examples/output/example_05.jpg
-Successfully saved output image: examples/output/example_05.jpg
-------------------------------------------------------------
-
-Batch processing complete. Success: 5, Failed: 0
-Total processing time: 00m 00s 897ms
+num threads: 32
+Loaded 5 images for batch processing.
+Launching GPU filter kernel: GRAYSCALE (images 0 to 4)
+Batch processing complete: 5 images processed.
+Total processing time: 00m 00s 657ms
 ```
 
 ## Benchmark
 Tested on a batch of 6499 butterfly images from [Kaggle](https://www.kaggle.com/datasets/phucthaiv02/butterfly-image-classification):
 
-| Device                  | Total Time           | Images / sec | Speedup vs CPU |
-| ----------------------- | -----------------: | -----------: | -------------: |
-| **CPU (1 thread)**      | 3 min 13.394 s      |      **33.61** |             1× |
-| **CPU (OpenMP 32 threads)** | 12.650 s        |     **513.97** |        **15.29×** |
-| **GPU (batching)**      | 2.067 s             |    **3144.78** |       **93.57×** |
+|                      Device |               Total Time |       Images / sec | Speedup vs CPU (single-thread) |
+| --------------------------: | -----------------------: | -----------------: | -----------------------------: |
+|          **CPU (1 thread)** | 3 m 13.394 s (193.394 s) |   **33.60** imgs/s |                      **1.00×** |
+| **CPU (OpenMP 32 threads)** |            00 m 10.210 s |  **636.53** imgs/s |                     **18.94×** |
+|          **GPU (batching)** |            00 m 01.985 s | **3274.06** imgs/s |                     **97.43×** |
 
-- GPU is ≈ **94×** faster than single-threaded CPU and ≈ **6×** faster than 32-thread OpenMP CPU.
-- CPU OpenMP 32 threads: ≈ 1429% faster than single-thread CPU
-- GPU: ≈ **9257%** faster than single-thread CPU
+
+- **GPU vs CPU (32-thread OpenMP): 5.14×** faster (GPU is ≈ **414.36%** faster than 32-thread CPU).
+- **CPU OpenMP (32) vs CPU (1): 18.94×** faster (≈ **1794.16%** faster).
+- **GPU vs CPU (1): 97.43×** faster (≈ **9642.77%** faster).
 
 ### Notes:
 - Both CPU and GPU processed all 6499 images successfully (0 failed).  
@@ -138,8 +123,16 @@ Tested on a batch of 6499 butterfly images from [Kaggle](https://www.kaggle.com/
 
 
 
+![Benchmark comparison - GPU vs CPU](.github/benchmark_double.png)
+> Hardware:
+>  - AMD Radeon RX 6900 XT
+>  - AMD Ryzen 3950X (32 threads OpenMP)
+>  - HIP build (-march=native --offload-arch=gfx1030)
 
-## Credits:
+
+
+
+## Credits
 
 Images (unsplash.com):
 - [example_01](https://unsplash.com/photos/pagoda-surrounded-by-trees-E_eWwM29wfU)

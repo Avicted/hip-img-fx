@@ -1,4 +1,4 @@
-#include "gpu_utils.h"
+#include "../gpu_utils.h"
 
 extern "C" __global__ void gaussian_blur_kernel(
     const unsigned char *input,

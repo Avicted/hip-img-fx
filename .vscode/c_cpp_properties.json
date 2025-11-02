@@ -7,16 +7,16 @@
             "cppStandard": "c++20",
             // "intelliSenseMode": "linux-clang-x64",
             "includePath": [
-                "${workspaceFolder}/src/core",
-                "${workspaceFolder}/src/core/filters",
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/src/filters",
                 "/opt/rocm/include",
                 "/usr/include",
                 "/usr/local/include"
             ],
             "browse": {
                 "path": [
-                    "${workspaceFolder}/src/core",
-                    "${workspaceFolder}/src/core/filters",
+                    "${workspaceFolder}/src",
+                    "${workspaceFolder}/src/filters",
                     "/opt/rocm/include",
                     "/usr/include",
                     "/usr/local/include"

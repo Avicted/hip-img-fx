@@ -90,14 +90,13 @@ hipError_t apply_filter_cpu(
     }
     case FILTER_TYPE::GAUSSIAN_BLUR:
     {
-        int blurAmount = 11; // example fixed blur amount
-        if (blurAmount % 2 == 0)
+        if (GAUSSIAN_BLUR_AMOUNT % 2 == 0)
         {
-            fprintf(stderr, "ERROR: blurAmount must be an odd number. You chose: %d.\n", blurAmount);
+            fprintf(stderr, "ERROR: blurAmount must be an odd number. You chose: %d.\n", GAUSSIAN_BLUR_AMOUNT);
             return hipErrorInvalidValue;
         }
 
-        gaussian_blur_cpu(input_image, output_image, width, height, channels, blurAmount);
+        gaussian_blur_cpu(input_image, output_image, width, height, channels, GAUSSIAN_BLUR_AMOUNT);
         return hipSuccess;
     }
     default:
@@ -170,14 +169,13 @@ hipError_t apply_filter_gpu(
     }
     case FILTER_TYPE::GAUSSIAN_BLUR:
     {
-        int blurAmount = 11; // example fixed blur amount
-        if (blurAmount % 2 == 0)
+        if (GAUSSIAN_BLUR_AMOUNT % 2 == 0)
         {
-            fprintf(stderr, "ERROR: blurAmount must be an odd number. You chose: %d.\n", blurAmount);
+            fprintf(stderr, "ERROR: blurAmount must be an odd number. You chose: %d.\n", GAUSSIAN_BLUR_AMOUNT);
             return hipErrorInvalidValue;
         }
 
-        size_t shared_bytes = sizeof(float) * blurAmount * blurAmount;
+        size_t shared_bytes = sizeof(float) * GAUSSIAN_BLUR_AMOUNT * GAUSSIAN_BLUR_AMOUNT;
 
         hipLaunchKernelGGL(
             gaussian_blur_kernel,         // kernel
@@ -189,7 +187,7 @@ hipError_t apply_filter_gpu(
             (unsigned char *)d_output.ptr,
             (image_meta_t *)d_metas.ptr,
             (int)input_images.size(),
-            blurAmount);
+            GAUSSIAN_BLUR_AMOUNT);
         break;
     }
     default:

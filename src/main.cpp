@@ -1,15 +1,7 @@
-#include <stdio.h>
-#include <string>
-#include <vector>
-#include <algorithm>
-#include <filesystem>
 #include <chrono>
-#include <omp.h>
 
-#include "gpu_utils.h"
 #include "cli_parser.h"
 #include "process.h"
-#include "image.h"
 
 int main(int argc, char **argv)
 {
@@ -74,7 +66,8 @@ int main(int argc, char **argv)
     }
     else if (!input_is_dir && !output_is_dir)
     {
-        ret = process_one_cpu(args.input_file, args.output_file, args.filter_type);
+        const bool running_as_batch = false;
+        ret = process_one_cpu(running_as_batch, args.input_file, args.output_file, args.filter_type);
     }
     else
     {

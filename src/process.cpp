@@ -6,7 +6,6 @@ int process_batch_gpu(const std::vector<std::string> &input_files,
                       const std::string &output_path,
                       FILTER_TYPE filter_type)
 {
-    printf("omp in parallel: %d\n", omp_in_parallel());
     printf("num threads: %d\n", omp_get_max_threads());
 
     std::vector<image_t> input_images(input_files.size());
@@ -93,6 +92,7 @@ int process_batch_gpu(const std::vector<std::string> &input_files,
 }
 
 int process_one_cpu(
+    bool running_as_batch,
     const std::string &input_path,
     const std::string &output_path,
     FILTER_TYPE filter_type)
@@ -141,8 +141,11 @@ int process_one_cpu(
         return -1;
     }
 
-    printf("Successfully saved output image: %s\n", output_path.c_str());
-    printf("------------------------------------------------------------\n");
+    if (!running_as_batch)
+    {
+        printf("Successfully saved output image: %s\n", output_path.c_str());
+        printf("------------------------------------------------------------\n");
+    }
 
     free_image(&image);
     free_image(&output_image);
@@ -153,7 +156,6 @@ int process_batch_cpu(const std::vector<std::string> &input_files,
                       const std::string &output_path,
                       FILTER_TYPE filter_type)
 {
-    printf("omp in parallel: %d\n", omp_in_parallel());
     printf("num threads: %d\n", omp_get_max_threads());
 
 #pragma omp parallel for
@@ -161,8 +163,9 @@ int process_batch_cpu(const std::vector<std::string> &input_files,
     {
         const fs::path in_path(input_files[i]);
         const fs::path out_file = fs::path(output_path) / in_path.filename();
+        const bool running_as_batch = true;
 
-        if (process_one_cpu(input_files[i].c_str(), out_file.string(), filter_type) != 0)
+        if (process_one_cpu(running_as_batch, input_files[i].c_str(), out_file.string(), filter_type) != 0)
         {
         }
     }

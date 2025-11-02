@@ -10,6 +10,8 @@
 #include "image.h"
 #include "filters/filters.h"
 
+#define GAUSSIAN_BLUR_AMOUNT 11 // Has to be an odd number
+
 #define HIP_ERRCHK(err) (hip_errchk(err, __FILE__, __LINE__))
 
 inline void hip_errchk(hipError_t err, const char *file, int line)

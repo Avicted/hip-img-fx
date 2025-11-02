@@ -8,14 +8,6 @@ Fast GPU-accelerated image filters (HIP) with a CPU fallback path for portabilit
 - Meson build system
 
 
-### Tested on:
-
-hipcc --version\
-HIP version: 6.4.43484-123eb5128\
-AMD clang version 19.0.0git (/srcdest/rocm-llvm d366fa84f3fdcbd4b10847ebd5db572ae12a34fb)
-
-
-
 ## Compilation
 ```bash
 meson setup build --native-file native/hip.ini --reconfigure
@@ -26,7 +18,7 @@ ninja -C build
 
 ### Help
 ```bash
-./build/src/app/hip-img-fx --help
+./build/hip-img-fx --help
 Running HIP image fx...
 
 Usage: hip-img-fx [options]
@@ -124,10 +116,18 @@ Tested on a batch of 6499 butterfly images from [Kaggle](https://www.kaggle.com/
 
 
 ![Benchmark comparison - GPU vs CPU](.github/benchmark_double.png)
+
+### Test system
 > Hardware:
 >  - AMD Radeon RX 6900 XT
 >  - AMD Ryzen 3950X (32 threads OpenMP)
 >  - HIP build (-march=native --offload-arch=gfx1030)
+
+```bash
+hipcc --version\
+HIP version: 6.4.43484-123eb5128\
+AMD clang version 19.0.0git (/srcdest/rocm-llvm d366fa84f3fdcbd4b10847ebd5db572ae12a34fb)
+```
 
 
 

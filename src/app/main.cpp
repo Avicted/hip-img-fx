@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <chrono>
+#include <omp.h>
 
 #include "gpu_utils.h"
 #include "cli_parser.h"
@@ -19,6 +20,97 @@ bool has_supported_ext(const fs::path &p)
     std::string ext = p.extension().string();
     std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
     return std::find(supported_exts.begin(), supported_exts.end(), ext) != supported_exts.end();
+}
+
+int process_batch(const std::vector<std::string> &input_files,
+                  const std::string &output_path,
+                  FILTER_TYPE filter_type)
+{
+    printf("omp in parallel: %d\n", omp_in_parallel());
+    printf("num threads: %d\n", omp_get_max_threads());
+
+    std::vector<image_t> input_images(input_files.size());
+    std::vector<image_t> output_images(input_files.size());
+
+    // Load all images in parallel
+#pragma omp parallel for shared(input_images, output_images, input_files)
+    for (size_t i = 0; i < input_files.size(); ++i)
+    {
+        const std::string &input_file = input_files[i];
+        image_t img = load_image(input_file.c_str());
+        if (img.data == nullptr)
+        {
+#pragma omp critical
+            {
+                fprintf(stderr, "ERROR: Failed to load input image: %s\n", input_file.c_str());
+            }
+        }
+        input_images[i] = img;
+
+        if (img.data != nullptr)
+        {
+            image_t out_img;
+            out_img.width = img.width;
+            out_img.height = img.height;
+            out_img.channels = img.channels;
+            size_t bytes = size_t(img.width) * img.height * img.channels;
+            out_img.data = (unsigned char *)malloc(bytes);
+            if (out_img.data == nullptr)
+            {
+#pragma omp critical
+                {
+                    fprintf(stderr, "ERROR: Could not allocate memory for output image: %s\n", input_file.c_str());
+                }
+            }
+            output_images[i] = out_img;
+        }
+    }
+
+    printf("Loaded %zu images for batch processing.\n", input_images.size());
+
+    // Launch GPU kernel in chunks
+    const size_t chunk_size = 64; // tune based on GPU memory
+    size_t total_images = input_images.size();
+
+    for (size_t offset = 0; offset < total_images; offset += chunk_size)
+    {
+        size_t current_chunk = std::min(chunk_size, total_images - offset);
+        std::vector<image_t> input_chunk(input_images.begin() + offset, input_images.begin() + offset + current_chunk);
+        std::vector<image_t> output_chunk(output_images.begin() + offset, output_images.begin() + offset + current_chunk);
+
+        printf("Launching GPU filter kernel: %s (images %zu to %zu)\n",
+               filter_type_to_string(filter_type).c_str(), offset, offset + current_chunk - 1);
+
+        hipError_t err = apply_filter_gpu(filter_type, input_chunk, output_chunk);
+        if (err != hipSuccess)
+        {
+            fprintf(stderr, "ERROR: Failed to apply GPU filter on chunk starting at image %zu\n", offset);
+            return -1;
+        }
+    }
+
+    // Save all output images in parallel
+#pragma omp parallel for shared(input_images, output_images, input_files, output_path)
+    for (size_t i = 0; i < input_files.size(); ++i)
+    {
+        fs::path in_path(input_files[i]);
+        fs::path out_file = fs::path(output_path) / in_path.filename();
+
+        if (!save_image(out_file.string().c_str(), &output_images[i]))
+        {
+#pragma omp critical
+            {
+                fprintf(stderr, "ERROR: Could not save output image: %s\n", out_file.string().c_str());
+            }
+        }
+
+        free_image(&input_images[i]);
+        free_image(&output_images[i]);
+    }
+
+    printf("Batch processing complete: %zu images processed.\n", input_images.size());
+
+    return 0;
 }
 
 int process_one(bool use_cpu, const std::string &input_path, const std::string &output_path, FILTER_TYPE filter_type)
@@ -45,8 +137,7 @@ int process_one(bool use_cpu, const std::string &input_path, const std::string &
         return -1;
     }
 
-    if (apply_filter(
-            use_cpu,
+    if (apply_filter_cpu(
             filter_type,
             image.data,
             output_image.data,
@@ -112,7 +203,10 @@ int main(int argc, char **argv)
     if (input_is_dir && output_is_dir)
     {
         // Batch mode
-        int processed = 0, failed = 0;
+        std::vector<std::string> input_files = {};
+        int processed = 0;
+        int failed = 0;
+
         for (const auto &entry : fs::directory_iterator(input_path))
         {
             if (!entry.is_regular_file())
@@ -124,18 +218,29 @@ int main(int argc, char **argv)
                 continue;
             }
 
-            fs::path out_file = output_path / entry.path().filename();
-            printf("\nProcessing: %s -> %s\n", entry.path().string().c_str(), out_file.string().c_str());
-            int res = process_one(use_cpu, entry.path().string(), out_file.string(), args.filter_type);
-            if (res == 0)
-            {
-                processed++;
-            }
-            else
-            {
-                failed++;
-            }
+            input_files.push_back(entry.path().string());
+
+            // fs::path out_file = output_path / entry.path().filename();
+            // printf("\nProcessing: %s -> %s\n", entry.path().string().c_str(), out_file.string().c_str());
+            // int res = process_one(use_cpu, entry.path().string(), out_file.string(), args.filter_type);
+            // int res = process_batch(...);
+            // if (res == 0)
+            // {
+            //     processed++;
+            // }
+            // else
+            // {
+            //     failed++;
+            // }
         }
+
+        for (const std::string &file_name : input_files)
+        {
+            // printf("\nProcessing: %s\n", file_name.c_str());
+        }
+
+        int res = process_batch(input_files, output_path.string(), args.filter_type);
+
         printf("\nBatch processing complete. Success: %d, Failed: %d\n", processed, failed);
         ret = (failed == 0 ? 0 : 1);
     }

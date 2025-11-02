@@ -1,4 +1,6 @@
 #include "gpu_utils.h"
+#include <cstdio>
+#include <cstdlib>
 
 // HIP error handling macro
 #define HIP_ERRCHK(err) (hip_errchk(err, __FILE__, __LINE__))
@@ -7,7 +9,7 @@ inline void hip_errchk(hipError_t err, const char *file, int line)
 {
     if (err != hipSuccess)
     {
-        printf("\n\n%s in %s at line %d\n", hipGetErrorString(err), file, line);
+        printf("\n%s in %s at line %d\n", hipGetErrorString(err), file, line);
         exit(EXIT_FAILURE);
     }
 }
@@ -63,6 +65,245 @@ int get_hip_devices(void)
     return deviceCount;
 }
 
+inline dim3 compute_grid(int width, int height, const dim3 &block)
+{
+    return dim3((width + block.x - 1) / block.x, (height + block.y - 1) / block.y);
+}
+
+// ------------------------ batch helpers ------------------------
+
+hipError_t prepare_device_batch(
+    std::vector<image_t> &host_in,
+    std::vector<image_t> &host_out,
+    DeviceBatch &batch,
+    int device_id)
+{
+    batch.N = (int)host_in.size();
+    int N = batch.N;
+    HIP_ERRCHK(hipSetDevice(device_id));
+
+    // compute total bytes
+    batch.total_bytes = 0;
+    for (auto &img : host_in)
+        batch.total_bytes += size_t(img.width) * img.height * img.channels;
+
+    // allocate single pixel buffer
+    HIP_ERRCHK(hipMalloc(&batch.d_pixels, batch.total_bytes));
+
+    // allocate image_t array
+    HIP_ERRCHK(hipMalloc(&batch.d_images, sizeof(image_t) * N));
+
+    // copy image_t structs and patch .data pointers
+    size_t offset = 0;
+    std::vector<image_t> tmp_images(N);
+    for (int i = 0; i < N; ++i)
+    {
+        size_t bytes = size_t(host_in[i].width) * host_in[i].height * host_in[i].channels;
+        unsigned char *d_ptr = batch.d_pixels + offset;
+        HIP_ERRCHK(hipMemcpy(d_ptr, host_in[i].data, bytes, hipMemcpyHostToDevice));
+
+        image_t tmp = host_in[i];
+        tmp.data = d_ptr;
+        tmp_images[i] = tmp;
+
+        offset += bytes;
+    }
+
+    // copy structs to device
+    HIP_ERRCHK(hipMemcpy(batch.d_images, tmp_images.data(), sizeof(image_t) * N, hipMemcpyHostToDevice));
+
+    return hipSuccess;
+}
+
+hipError_t copy_back_batch(
+    std::vector<image_t> &host_out,
+    DeviceBatch &batch)
+{
+    size_t offset = 0;
+    for (int i = 0; i < batch.N; ++i)
+    {
+        size_t bytes = size_t(host_out[i].width) * host_out[i].height * host_out[i].channels;
+        HIP_ERRCHK(hipMemcpy(host_out[i].data, batch.d_images[i].data + offset, bytes, hipMemcpyDeviceToHost));
+        offset += bytes;
+    }
+    return hipSuccess;
+}
+
+void free_batch(DeviceBatch &batch)
+{
+    if (batch.d_images)
+        hipFree(batch.d_images);
+    if (batch.d_pixels)
+        hipFree(batch.d_pixels);
+    batch = DeviceBatch{};
+}
+
+// ------------------------ generic templated GPU call ------------------------
+
+template <typename Launcher>
+hipError_t apply_filter_generic_templated(
+    std::vector<image_t> &input_images,
+    std::vector<image_t> &output_images,
+    Launcher &&launch_kernel,
+    dim3 blockSize,
+    int device_id,
+    size_t shared_bytes)
+{
+    DeviceBatch batch;
+    HIP_ERRCHK(prepare_device_batch(input_images, output_images, batch, device_id));
+
+    // compute grid based on first image
+    int w = input_images[0].width;
+    int h = input_images[0].height;
+
+    dim3 grid = compute_grid(w, h, blockSize);
+    grid.z = batch.N; // batch dimension
+
+    launch_kernel(batch.d_images, batch.d_images, grid, blockSize, shared_bytes);
+
+    HIP_ERRCHK(hipDeviceSynchronize());
+
+    HIP_ERRCHK(copy_back_batch(output_images, batch));
+
+    free_batch(batch);
+
+    return hipSuccess;
+}
+
+hipError_t apply_filter_cpu(
+    FILTER_TYPE filter_type,
+    unsigned char *input_image,
+    unsigned char *output_image,
+    int width,
+    int height,
+    int channels)
+{
+    switch (filter_type)
+    {
+    case FILTER_TYPE::GRAYSCALE:
+        grayscale_cpu(input_image, output_image, width, height, channels);
+        return hipSuccess;
+    case FILTER_TYPE::NEGATIVE:
+        negative_cpu(input_image, output_image, width, height, channels);
+        return hipSuccess;
+    default:
+        printf("ERROR: Unsupported CPU filter type\n");
+        return hipErrorInvalidValue;
+    }
+}
+
+hipError_t apply_filter_gpu(
+    FILTER_TYPE filter_type,
+    std::vector<image_t> &input_images,
+    std::vector<image_t> &output_images)
+{
+    // Compute total pixels and metadata
+    size_t total_bytes = 0;
+    std::vector<image_meta_t> metas(input_images.size());
+
+    for (size_t i = 0; i < input_images.size(); ++i)
+    {
+        metas[i].width = input_images[i].width;
+        metas[i].height = input_images[i].height;
+        metas[i].channels = input_images[i].channels;
+        metas[i].offset = total_bytes / sizeof(unsigned char);
+        total_bytes += size_t(input_images[i].width) * input_images[i].height * input_images[i].channels;
+    }
+
+    // Allocate contiguous device buffers
+    DeviceBuffer d_input, d_output, d_metas;
+    HIP_ERRCHK(hipMalloc(&d_input.ptr, total_bytes));
+    HIP_ERRCHK(hipMalloc(&d_output.ptr, total_bytes));
+    HIP_ERRCHK(hipMalloc(&d_metas.ptr, sizeof(image_meta_t) * metas.size()));
+
+    // Copy pixels to device
+    size_t pos = 0;
+    for (size_t i = 0; i < input_images.size(); ++i)
+    {
+        size_t bytes = size_t(input_images[i].width) * input_images[i].height * input_images[i].channels;
+        HIP_ERRCHK(hipMemcpy((unsigned char *)d_input.ptr + pos, input_images[i].data, bytes, hipMemcpyHostToDevice));
+        pos += bytes;
+    }
+
+    // Copy metadata
+    HIP_ERRCHK(hipMemcpy(d_metas.ptr, metas.data(), sizeof(image_meta_t) * metas.size(), hipMemcpyHostToDevice));
+
+    // Launch kernel
+    // printf("Launching GPU filter kernel: %s\n", filter_type_to_string(filter_type).c_str());
+
+    int threads = 512;
+    int blocks = (total_bytes + threads - 1) / threads;
+
+    switch (filter_type)
+    {
+    case FILTER_TYPE::GRAYSCALE:
+    {
+        hipLaunchKernelGGL(grayscale_kernel, dim3(blocks), dim3(threads), 0, 0,
+                           (unsigned char *)d_input.ptr,
+                           (unsigned char *)d_output.ptr,
+                           (image_meta_t *)d_metas.ptr,
+                           (int)input_images.size());
+        break;
+    }
+    case FILTER_TYPE::NEGATIVE:
+    {
+        hipLaunchKernelGGL(negative_kernel, dim3(blocks), dim3(threads), 0, 0,
+                           (unsigned char *)d_input.ptr,
+                           (unsigned char *)d_output.ptr,
+                           (image_meta_t *)d_metas.ptr,
+                           (int)input_images.size());
+        break;
+    }
+    case FILTER_TYPE::GAUSSIAN_BLUR:
+    {
+        int blurAmount = 11; // example fixed blur amount
+        if (blurAmount % 2 == 0)
+        {
+            fprintf(stderr, "ERROR: blurAmount must be an odd number. You chose: %d.\n", blurAmount);
+            return hipErrorInvalidValue;
+        }
+
+        size_t shared_bytes = sizeof(float) * blurAmount * blurAmount;
+
+        hipLaunchKernelGGL(
+            gaussian_blur_kernel,         // kernel
+            dim3(blocks),                 // grid
+            dim3(threads),                // block
+            shared_bytes,                 // dynamic shared memory
+            0,                            // stream
+            (unsigned char *)d_input.ptr, // kernel args start here
+            (unsigned char *)d_output.ptr,
+            (image_meta_t *)d_metas.ptr,
+            (int)input_images.size(),
+            blurAmount);
+        break;
+    }
+    default:
+    {
+        printf("ERROR: Unsupported GPU filter type\n");
+        return hipErrorInvalidValue;
+    }
+    }
+
+    HIP_ERRCHK(hipDeviceSynchronize());
+
+    // Copy back flattened output to original image buffers
+    pos = 0;
+    for (size_t i = 0; i < output_images.size(); ++i)
+    {
+        size_t bytes = size_t(output_images[i].width) * output_images[i].height * output_images[i].channels;
+        HIP_ERRCHK(hipMemcpy(output_images[i].data, (unsigned char *)d_output.ptr + pos, bytes, hipMemcpyDeviceToHost));
+        pos += bytes;
+    }
+
+    // Free device memory
+    hipFree(d_input.ptr);
+    hipFree(d_output.ptr);
+    hipFree(d_metas.ptr);
+
+    return hipSuccess;
+}
+
 std::string filter_type_to_string(FILTER_TYPE type)
 {
     switch (type)
@@ -78,158 +319,4 @@ std::string filter_type_to_string(FILTER_TYPE type)
     default:
         return "UNKNOWN";
     }
-}
-
-hipError_t apply_filter(
-    bool use_cpu,
-    FILTER_TYPE filter_type,
-    unsigned char *input_image,
-    unsigned char *output_image,
-    int width,
-    int height,
-    int channels)
-{
-    switch (filter_type)
-    {
-    case FILTER_TYPE::GRAYSCALE:
-    {
-        if (use_cpu)
-        {
-            grayscale_cpu(input_image, output_image, width, height, channels);
-            return hipSuccess;
-        }
-
-        return apply_filter_generic_templated(input_image, output_image, width, height, channels,
-                                              [&](unsigned char *d_in, unsigned char *d_out, dim3 grid, dim3 block, size_t shared_bytes)
-                                              {
-                                                  hipLaunchKernelGGL(
-                                                      grayscale_kernel,
-                                                      grid,
-                                                      block,
-                                                      shared_bytes,
-                                                      0,
-                                                      d_in,
-                                                      d_out,
-                                                      width,
-                                                      height,
-                                                      channels);
-                                              });
-    }
-    case FILTER_TYPE::NEGATIVE:
-    {
-        if (use_cpu)
-        {
-            negative_cpu(input_image, output_image, width, height, channels);
-            return hipSuccess;
-        }
-
-        return apply_filter_generic_templated(input_image, output_image, width, height, channels,
-                                              [&](unsigned char *d_in, unsigned char *d_out, dim3 grid, dim3 block, size_t shared_bytes)
-                                              {
-                                                  hipLaunchKernelGGL(
-                                                      negative_kernel,
-                                                      grid,
-                                                      block,
-                                                      shared_bytes,
-                                                      0,
-                                                      d_in,
-                                                      d_out,
-                                                      width,
-                                                      height,
-                                                      channels);
-                                              });
-    }
-    case FILTER_TYPE::GAUSSIAN_BLUR:
-    {
-        const int blurAmount = 11;
-        if (blurAmount % 2 == 0)
-        {
-            fprintf(stderr, "ERROR: Gaussian blur amount must be an odd number!\n");
-            return hipErrorInvalidValue;
-        }
-
-        if (use_cpu)
-        {
-            gaussian_blur_cpu(input_image, output_image, width, height, channels, blurAmount);
-            return hipSuccess;
-        }
-
-        size_t shared_bytes = sizeof(float) * (size_t)blurAmount * (size_t)blurAmount;
-
-        return apply_filter_generic_templated(input_image, output_image, width, height, channels, [&](unsigned char *d_in, unsigned char *d_out, dim3 grid, dim3 block, size_t sb)
-                                              { hipLaunchKernelGGL(
-                                                    gaussian_blur_kernel,
-                                                    grid,
-                                                    block,
-                                                    sb,
-                                                    0,
-                                                    d_in,
-                                                    d_out,
-                                                    width,
-                                                    height,
-                                                    channels,
-                                                    blurAmount); }, dim3(16, 16), 0, shared_bytes);
-    }
-    default:
-    {
-        printf("ERROR: Unsupported filter type!\n");
-        return hipErrorInvalidValue;
-    }
-    }
-}
-
-inline dim3 compute_grid(int width, int height, const dim3 &block)
-{
-    return dim3((width + block.x - 1) / block.x, (height + block.y - 1) / block.y);
-}
-
-hipError_t prepare_device_buffers(
-    unsigned char *input_image,
-    DeviceBuffer &d_input,
-    DeviceBuffer &d_output,
-    size_t image_bytes,
-    int device_id)
-{
-    HIP_ERRCHK(hipSetDevice(device_id));
-    HIP_ERRCHK(hipMalloc(reinterpret_cast<void **>(&d_input.ptr), image_bytes));
-    HIP_ERRCHK(hipMalloc(reinterpret_cast<void **>(&d_output.ptr), image_bytes));
-    d_input.size = image_bytes;
-    d_output.size = image_bytes;
-    HIP_ERRCHK(hipMemcpy(d_input.ptr, input_image, image_bytes, hipMemcpyHostToDevice));
-    return hipSuccess;
-}
-
-hipError_t copy_back_and_finish(unsigned char *output_image, DeviceBuffer &d_output, size_t image_bytes)
-{
-    HIP_ERRCHK(hipMemcpy(output_image, d_output.ptr, image_bytes, hipMemcpyDeviceToHost));
-    return hipSuccess;
-}
-
-template <typename Launcher>
-hipError_t apply_filter_generic_templated(
-    unsigned char *input_image,
-    unsigned char *output_image,
-    int width,
-    int height,
-    int channels,
-    Launcher &&launch_kernel,
-    dim3 blockSize,
-    int device_id,
-    size_t shared_bytes)
-{
-    size_t image_bytes = (size_t)width * (size_t)height * (size_t)channels * sizeof(unsigned char);
-    DeviceBuffer d_input, d_output;
-
-    HIP_ERRCHK(prepare_device_buffers(input_image, d_input, d_output, image_bytes, device_id));
-
-    dim3 gridSize = compute_grid(width, height, blockSize);
-
-    // printf("  Using GPU %d\n", device_id);
-
-    launch_kernel(d_input.ptr, d_output.ptr, gridSize, blockSize, shared_bytes);
-
-    HIP_ERRCHK(hipDeviceSynchronize());
-    HIP_ERRCHK(copy_back_and_finish(output_image, d_output, image_bytes));
-
-    return hipSuccess;
 }

@@ -1,24 +1,32 @@
 #include "gpu_utils.h"
 
 extern "C" __global__ void negative_kernel(
-    const unsigned char *input_image,
-    unsigned char *output_image,
-    int width,
-    int height,
-    int channels)
+    const unsigned char *input,
+    unsigned char *output,
+    const image_meta_t *metas,
+    int num_images)
 {
-    int x = blockIdx.x * blockDim.x + threadIdx.x;
-    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (x < width && y < height)
-    {
-        int idx = (y * width + x) * channels;
+    // Determine which image this pixel belongs to
+    int img_idx = 0;
+    while (img_idx < num_images &&
+           idx >= metas[img_idx].offset + metas[img_idx].width * metas[img_idx].height * metas[img_idx].channels)
+        img_idx++;
 
-        for (int c = 0; c < channels; c++)
-        {
-            output_image[idx + c] = 255 - input_image[idx + c];
-        }
-    }
+    if (img_idx >= num_images)
+        return;
+
+    const image_meta_t &meta = metas[img_idx];
+    int pixel_idx = idx - meta.offset; // index inside this image
+
+    int c = pixel_idx % meta.channels;
+    int pos_in_image = pixel_idx / meta.channels;
+    int x = pos_in_image % meta.width;
+    int y = pos_in_image / meta.width;
+
+    // Apply negative per channel
+    output[meta.offset + pixel_idx] = 255 - input[meta.offset + pixel_idx];
 }
 
 void negative_cpu(

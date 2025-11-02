@@ -8,8 +8,11 @@ app_sources = files(
   '../core/filters/gaussian_blur.hip.cpp',
 )
 
+
 executable(
   'hip-img-fx',
   app_sources,
+  cpp_args: ['-fopenmp'],
+  link_args: ['-fopenmp'],
   include_directories: [include_directories('../core', '/opt/rocm/include')],
 )

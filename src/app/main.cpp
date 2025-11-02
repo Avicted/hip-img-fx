@@ -22,9 +22,9 @@ bool has_supported_ext(const fs::path &p)
     return std::find(supported_exts.begin(), supported_exts.end(), ext) != supported_exts.end();
 }
 
-int process_batch(const std::vector<std::string> &input_files,
-                  const std::string &output_path,
-                  FILTER_TYPE filter_type)
+int process_batch_gpu(const std::vector<std::string> &input_files,
+                      const std::string &output_path,
+                      FILTER_TYPE filter_type)
 {
     printf("omp in parallel: %d\n", omp_in_parallel());
     printf("num threads: %d\n", omp_get_max_threads());
@@ -113,7 +113,7 @@ int process_batch(const std::vector<std::string> &input_files,
     return 0;
 }
 
-int process_one(bool use_cpu, const std::string &input_path, const std::string &output_path, FILTER_TYPE filter_type)
+int process_one_cpu(const std::string &input_path, const std::string &output_path, FILTER_TYPE filter_type)
 {
     image_t image = load_image(input_path.c_str());
     if (image.data == nullptr)
@@ -164,6 +164,29 @@ int process_one(bool use_cpu, const std::string &input_path, const std::string &
 
     free_image(&image);
     free_image(&output_image);
+    return 0;
+}
+
+int process_batch_cpu(const std::vector<std::string> &input_files,
+                      const std::string &output_path,
+                      FILTER_TYPE filter_type)
+{
+    printf("omp in parallel: %d\n", omp_in_parallel());
+    printf("num threads: %d\n", omp_get_max_threads());
+
+#pragma omp parallel for
+    for (size_t i = 0; i < input_files.size(); ++i)
+    {
+        const fs::path in_path(input_files[i]);
+        const fs::path out_file = fs::path(output_path) / in_path.filename();
+
+        if (process_one_cpu(input_files[i].c_str(), out_file.string(), filter_type) != 0)
+        {
+        }
+    }
+
+    printf("Batch processing complete: %zu images processed.\n", input_files.size());
+
     return 0;
 }
 
@@ -219,35 +242,25 @@ int main(int argc, char **argv)
             }
 
             input_files.push_back(entry.path().string());
-
-            // fs::path out_file = output_path / entry.path().filename();
-            // printf("\nProcessing: %s -> %s\n", entry.path().string().c_str(), out_file.string().c_str());
-            // int res = process_one(use_cpu, entry.path().string(), out_file.string(), args.filter_type);
-            // int res = process_batch(...);
-            // if (res == 0)
-            // {
-            //     processed++;
-            // }
-            // else
-            // {
-            //     failed++;
-            // }
         }
 
-        for (const std::string &file_name : input_files)
+        if (use_cpu)
         {
-            // printf("\nProcessing: %s\n", file_name.c_str());
+            // omp_set_num_threads(1);
+            process_batch_cpu(input_files, output_path.string(), args.filter_type) == 0 ? processed++ : failed++;
+        }
+        else
+        {
+            process_batch_gpu(input_files, output_path.string(), args.filter_type) == 0 ? processed++ : failed++;
         }
 
-        int res = process_batch(input_files, output_path.string(), args.filter_type);
-
-        printf("\nBatch processing complete. Success: %d, Failed: %d\n", processed, failed);
+        // printf("\nBatch processing complete. Success: %d, Failed: %d\n", processed, failed);
         ret = (failed == 0 ? 0 : 1);
     }
     else if (!input_is_dir && !output_is_dir)
     {
         // Single file mode
-        ret = process_one(use_cpu, args.input_file, args.output_file, args.filter_type);
+        ret = process_one_cpu(args.input_file, args.output_file, args.filter_type);
     }
     else
     {

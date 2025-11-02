@@ -19,10 +19,14 @@ extern "C" __global__ void gaussian_blur_kernel(
     int img_idx = 0;
     while (img_idx < num_images &&
            idx >= metas[img_idx].offset + metas[img_idx].width * metas[img_idx].height * metas[img_idx].channels)
+    {
         img_idx++;
+    }
 
     if (img_idx >= num_images)
+    {
         return;
+    }
 
     const image_meta_t &meta = metas[img_idx];
     int pixel_idx = idx - meta.offset; // index inside this image
@@ -41,14 +45,20 @@ extern "C" __global__ void gaussian_blur_kernel(
         float sigma = blurAmount / 2.0f;
         float sum = 0.0f;
         for (int ky = -radius; ky <= radius; ky++)
+        {
+
             for (int kx = -radius; kx <= radius; kx++)
             {
                 float v = expf(-(kx * kx + ky * ky) / (2.0f * sigma * sigma));
                 kernel[(ky + radius) * blurAmount + (kx + radius)] = v;
                 sum += v;
             }
+        }
+
         for (int i = 0; i < blurAmount * blurAmount; i++)
+        {
             kernel[i] /= sum;
+        }
     }
     __syncthreads();
 
@@ -68,11 +78,21 @@ extern "C" __global__ void gaussian_blur_kernel(
     // clamp and write
     int outv = static_cast<int>(pixel_value + 0.5f);
     if (outv < 0)
+    {
         outv = 0;
+    }
     if (outv > 255)
+    {
         outv = 255;
+    }
+
     output[meta.offset + pixel_idx] = static_cast<unsigned char>(outv);
 }
+
+#include <vector>
+#include <cmath>
+#include <algorithm>
+#include <omp.h>
 
 void gaussian_blur_cpu(
     const unsigned char *input_image,
@@ -85,7 +105,7 @@ void gaussian_blur_cpu(
     const int kernelRadius = blurAmount / 2;
     const int kernelSize = blurAmount * blurAmount;
 
-    // build kernel once like in GPU block(0,0)
+    // Build kernel
     std::vector<float> kernel(kernelSize);
 
     float sigma = blurAmount / 2.0f;
@@ -111,7 +131,8 @@ void gaussian_blur_cpu(
         kernel[i] /= sum;
     }
 
-    // convolution
+// Convolution (parallelized)
+#pragma omp parallel for collapse(2)
     for (int y = 0; y < height; ++y)
     {
         for (int x = 0; x < width; ++x)
@@ -122,27 +143,11 @@ void gaussian_blur_cpu(
 
                 for (int ky = -kernelRadius; ky <= kernelRadius; ++ky)
                 {
-                    int ny = y + ky;
-                    if (ny < 0)
-                    {
-                        ny = 0;
-                    }
-                    else if (ny >= height)
-                    {
-                        ny = height - 1;
-                    }
+                    int ny = std::clamp(y + ky, 0, height - 1);
 
                     for (int kx = -kernelRadius; kx <= kernelRadius; ++kx)
                     {
-                        int nx = x + kx;
-                        if (nx < 0)
-                        {
-                            nx = 0;
-                        }
-                        else if (nx >= width)
-                        {
-                            nx = width - 1;
-                        }
+                        int nx = std::clamp(x + kx, 0, width - 1);
 
                         int nidx = (ny * width + nx) * channels + c;
                         float in_val = (float)input_image[nidx];
@@ -153,15 +158,7 @@ void gaussian_blur_cpu(
 
                 int idx = (y * width + x) * channels + c;
                 int outv = (int)(pixel_value + 0.5f);
-                if (outv < 0)
-                {
-                    outv = 0;
-                }
-                else if (outv > 255)
-                {
-                    outv = 255;
-                }
-                output_image[idx] = (unsigned char)outv;
+                output_image[idx] = (unsigned char)std::clamp(outv, 0, 255);
             }
         }
     }

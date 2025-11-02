@@ -122,15 +122,20 @@ Total processing time: 00m 00s 897ms
 ## Benchmark
 Tested on a batch of 6499 butterfly images from [Kaggle](https://www.kaggle.com/datasets/phucthaiv02/butterfly-image-classification):
 
+| Device                  | Total Time           | Images / sec | Speedup vs CPU |
+| ----------------------- | -----------------: | -----------: | -------------: |
+| **CPU (1 thread)**      | 3 min 13.394 s      |      **33.61** |             1× |
+| **CPU (OpenMP 32 threads)** | 12.650 s        |     **513.97** |        **15.29×** |
+| **GPU (batching)**      | 2.067 s             |    **3144.78** |       **93.57×** |
 
-| Device  |                 Total Time | Images / sec | Speedup vs CPU |
-| ------- | -------------------------: | -----------: | -------------: |
-| **CPU** | 3 min 16.547 s (196.547 s) |    **33.07** |             1× |
-| **GPU** |                   10.670 s |   **609.09** |     **18.42×** |
+- GPU is ≈ **94×** faster than single-threaded CPU and ≈ **6×** faster than 32-thread OpenMP CPU.
+- CPU OpenMP 32 threads: ≈ 1429% faster than single-thread CPU
+- GPU: ≈ **9257%** faster than single-thread CPU
 
-GPU is ≈ **1742%** faster than CPU with a Gaussian blur filter (blurAmount = 11) with a batch of 6499 images.
+### Notes:
+- Both CPU and GPU processed all 6499 images successfully (0 failed).  
+- Gaussian blur filter was applied with `blurAmount = 11`.
 
-Both CPU and GPU processed all 6499 images successfully (0 failed).
 
 
 

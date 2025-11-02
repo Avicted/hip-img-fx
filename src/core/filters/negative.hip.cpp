@@ -12,10 +12,14 @@ extern "C" __global__ void negative_kernel(
     int img_idx = 0;
     while (img_idx < num_images &&
            idx >= metas[img_idx].offset + metas[img_idx].width * metas[img_idx].height * metas[img_idx].channels)
+    {
         img_idx++;
+    }
 
     if (img_idx >= num_images)
+    {
         return;
+    }
 
     const image_meta_t &meta = metas[img_idx];
     int pixel_idx = idx - meta.offset; // index inside this image
@@ -38,6 +42,7 @@ void negative_cpu(
 {
     const int total_pixels = width * height;
 
+#pragma omp parallel for
     for (int i = 0; i < total_pixels; i++)
     {
         int idx = i * channels;

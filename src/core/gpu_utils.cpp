@@ -181,11 +181,27 @@ hipError_t apply_filter_cpu(
     switch (filter_type)
     {
     case FILTER_TYPE::GRAYSCALE:
+    {
         grayscale_cpu(input_image, output_image, width, height, channels);
         return hipSuccess;
+    }
     case FILTER_TYPE::NEGATIVE:
+    {
         negative_cpu(input_image, output_image, width, height, channels);
         return hipSuccess;
+    }
+    case FILTER_TYPE::GAUSSIAN_BLUR:
+    {
+        int blurAmount = 11; // example fixed blur amount
+        if (blurAmount % 2 == 0)
+        {
+            fprintf(stderr, "ERROR: blurAmount must be an odd number. You chose: %d.\n", blurAmount);
+            return hipErrorInvalidValue;
+        }
+
+        gaussian_blur_cpu(input_image, output_image, width, height, channels, blurAmount);
+        return hipSuccess;
+    }
     default:
         printf("ERROR: Unsupported CPU filter type\n");
         return hipErrorInvalidValue;

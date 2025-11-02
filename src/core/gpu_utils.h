@@ -1,6 +1,8 @@
 #pragma once
 
 #include <hip/hip_runtime.h>
+#include <omp.h>
+
 #include <vector>
 #include <string>
 

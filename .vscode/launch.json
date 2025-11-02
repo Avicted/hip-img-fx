@@ -8,11 +8,11 @@
             "program": "${workspaceFolder}/build/src/app/hip-img-fx",
             "args": [
                 "--input",
-                "/home/avic/Pictures/train/",
+                "examples/example_01.jpg",
                 "--filter",
                 "gaussian-blur",
                 "--output",
-                "/home/avic/Pictures/train_output",
+                "examples/output/example_01.jpg",
                 // "--use-cpu",
             ],
             "stopAtEntry": false,

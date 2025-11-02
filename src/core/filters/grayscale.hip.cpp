@@ -12,10 +12,14 @@ extern "C" __global__ void grayscale_kernel(
     // We'll compute which image this pixel belongs to
     int img_idx = 0;
     while (img_idx < num_images && idx >= metas[img_idx].offset + metas[img_idx].width * metas[img_idx].height * metas[img_idx].channels)
+    {
         img_idx++;
+    }
 
     if (img_idx >= num_images)
+    {
         return;
+    }
 
     const image_meta_t &meta = metas[img_idx];
     int pixel_idx = idx - meta.offset;
@@ -34,7 +38,9 @@ extern "C" __global__ void grayscale_kernel(
     output[pixel_base + 2] = gray;
 
     if (meta.channels == 4)
+    {
         output[pixel_base + 3] = input[pixel_base + 3]; // copy alpha
+    }
 }
 
 void grayscale_cpu(
@@ -46,6 +52,7 @@ void grayscale_cpu(
 {
     const int total_pixels = width * height;
 
+#pragma omp parallel for
     for (int i = 0; i < total_pixels; i++)
     {
         int idx = i * channels;

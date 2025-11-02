@@ -98,11 +98,11 @@ Total processing time: 00m 00s 657ms
 ## Benchmark
 Tested on a batch of 6499 butterfly images from [Kaggle](https://www.kaggle.com/datasets/phucthaiv02/butterfly-image-classification):
 
-|                      Device |               Total Time |       Images / sec | Speedup vs CPU (single-thread) |
-| --------------------------: | -----------------------: | -----------------: | -----------------------------: |
-|          **CPU (1 thread)** | 3 m 13.394 s (193.394 s) |   **33.60** imgs/s |                      **1.00×** |
-| **CPU (OpenMP 32 threads)** |            00 m 10.210 s |  **636.53** imgs/s |                     **18.94×** |
-|          **GPU (batching)** |            00 m 01.985 s | **3274.06** imgs/s |                     **97.43×** |
+|                      Device |      Total Time |       Images / sec | Speedup vs CPU (1 thread) |
+| --------------------------: | --------------: | -----------------: | ------------------------: |
+|          **CPU (1 thread)** |   03 m 13.394 s |   **33.60** imgs/s |                 **1.00×** |
+| **CPU (OpenMP 32 threads)** |   00 m 10.210 s |  **636.53** imgs/s |                **18.94×** |
+|          **GPU (batching)** |   00 m 01.985 s | **3274.06** imgs/s |                **97.43×** |
 
 
 - **GPU vs CPU (32-thread OpenMP): 5.14×** faster (GPU is ≈ **414.36%** faster than 32-thread CPU).

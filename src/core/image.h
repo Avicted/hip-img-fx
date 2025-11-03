@@ -4,26 +4,29 @@
 #include <vector>
 #include <algorithm>
 
-namespace fs = std::filesystem;
-
-typedef struct
+namespace imgfx::core
 {
-    unsigned char *data;
-    int width;
-    int height;
-    int channels;
-} image_t;
+    namespace fs = std::filesystem;
 
-struct image_meta_t
-{
-    int offset; // start index of the image in the flattened buffer
-    int width;
-    int height;
-    int channels;
-};
+    typedef struct
+    {
+        unsigned char *data;
+        int width;
+        int height;
+        int channels;
+    } image_t;
 
-bool has_supported_ext(const fs::path &p);
-image_t load_image(const char *filename);
-void print_image_info(const image_t *img);
-void free_image(image_t *img);
-bool save_image(const char *filename, const image_t *img);
+    struct image_meta_t
+    {
+        int offset; // start index of the image in the flattened buffer
+        int width;
+        int height;
+        int channels;
+    };
+
+    bool has_supported_ext(const fs::path &p);
+    image_t load_image(const char *filename);
+    void print_image_info(const image_t *img);
+    void free_image(image_t *img);
+    bool save_image(const char *filename, const image_t *img);
+}

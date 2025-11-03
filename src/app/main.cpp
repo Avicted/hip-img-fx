@@ -1,86 +1,110 @@
 #include <chrono>
+#include <filesystem>
+#include <cstdio>
+#include <vector>
+#include <string>
 
 #include "../cli/cli_parser.h"
 #include "process.h"
 
+namespace cli = imgfx::cli;
+namespace core = imgfx::core;
+namespace app = imgfx::app;
+namespace fs = std::filesystem;
+
+inline std::vector<std::string> gather_files(const fs::path &input);
+inline void print_elapsed_time(const std::chrono::steady_clock::time_point &start);
+
 int main(int argc, char **argv)
 {
-    using clock = std::chrono::steady_clock;
-    auto start_time = clock::now();
-
+    const auto start_time = std::chrono::steady_clock::now();
     printf("Running HIP image fx...\n");
-    bool use_cpu = false;
 
-    cli_args_t args = parse_cli_args(argc, argv);
-    use_cpu = args.use_cpu;
+    const cli::cli_args_t args = cli::parse_cli_args(argc, argv);
+    bool use_cpu = args.use_cpu;
     printf("Using %s for processing.\n", (use_cpu ? "CPU" : "GPU"));
 
-    if (!use_cpu)
+    if (!use_cpu && core::get_hip_devices() < 1)
     {
-        int hip_device_count = get_hip_devices();
-        if (hip_device_count < 1)
-        {
-            fprintf(stderr, "ERROR: Could not find any HIP device!\n");
-            printf("Falling back to CPU processing...\n");
-            use_cpu = true;
-        }
+        fprintf(stderr, "WARNING: No HIP devices found. Falling back to CPU.\n");
+        use_cpu = true;
     }
 
     fs::path input_path(args.input_file);
     fs::path output_path(args.output_file);
 
-    bool input_is_dir = fs::is_directory(input_path);
-    bool output_is_dir = fs::is_directory(output_path);
-
-    int ret = 0;
-    int processed = 0;
-    int failed = 0;
-    if (input_is_dir && output_is_dir)
+    if (fs::is_directory(input_path) != fs::is_directory(output_path))
     {
-        std::vector<std::string> input_files = {};
+        fprintf(stderr, "ERROR: Both --input and --output must be files or directories.\n");
+        return -1;
+    }
 
-        for (const auto &entry : fs::directory_iterator(input_path))
-        {
-            if (!entry.is_regular_file())
-            {
-                continue;
-            }
-            if (!has_supported_ext(entry.path()))
-            {
-                continue;
-            }
+    const auto files = gather_files(input_path);
+    if (files.empty())
+    {
+        fprintf(stderr, "No supported files found in the specified input path.\n");
+        return -1;
+    }
 
-            input_files.push_back(entry.path().string());
-        }
-
+    int ret_code = 0;
+    if (fs::is_directory(input_path))
+    {
+        bool success = false;
         if (use_cpu)
         {
-            process_batch_cpu(input_files, output_path.string(), args.filter_type) == 0 ? processed++ : failed++;
+            success = (app::process_batch_cpu(files, output_path.string(), args.filter_type) == 0);
         }
         else
         {
-            process_batch_gpu(input_files, output_path.string(), args.filter_type) == 0 ? processed++ : failed++;
+            success = (app::process_batch_gpu(files, output_path.string(), args.filter_type) == 0);
         }
 
-        ret = (failed == 0 ? 0 : 1);
-    }
-    else if (!input_is_dir && !output_is_dir)
-    {
-        const bool running_as_batch = false;
-        ret = process_one_cpu(running_as_batch, args.input_file, args.output_file, args.filter_type);
+        if (!success)
+        {
+            fprintf(stderr, "Failed to process batch of files.\n");
+            ret_code = 1;
+        }
     }
     else
     {
-        fprintf(stderr, "ERROR: Both --input and --output must be either files or directories.\n");
-        ret = -1;
+        if (app::process_one_cpu(false, files[0], output_path.string(), args.filter_type) != 0)
+        {
+            fprintf(stderr, "Failed to process file: %s\n", files[0].c_str());
+            ret_code = 1;
+        }
     }
 
-    auto end_time = clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-    int minutes = static_cast<int>(elapsed / 60000);
-    int seconds = static_cast<int>((elapsed % 60000) / 1000);
-    int millis = static_cast<int>(elapsed % 1000);
-    printf("Total processing time: %02dm %02ds %03dms\n", minutes, seconds, millis);
+    print_elapsed_time(start_time);
+    return ret_code;
+}
 
-    return ret;
+inline std::vector<std::string> gather_files(const fs::path &input)
+{
+    std::vector<std::string> files;
+    if (fs::is_directory(input))
+    {
+        for (const auto &entry : fs::directory_iterator(input))
+        {
+            if (entry.is_regular_file() && core::has_supported_ext(entry.path()))
+            {
+                files.push_back(entry.path().string());
+            }
+        }
+    }
+    else
+    {
+        files.push_back(input.string());
+    }
+    return files;
+}
+
+inline void print_elapsed_time(const std::chrono::steady_clock::time_point &start)
+{
+    auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                          std::chrono::steady_clock::now() - start)
+                          .count();
+    printf("Total processing time: %02ldm %02lds %03ldms\n",
+           elapsed_ms / 60000,
+           (elapsed_ms % 60000) / 1000,
+           elapsed_ms % 1000);
 }

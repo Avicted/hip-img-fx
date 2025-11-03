@@ -4,12 +4,20 @@ project('hip-img-fx', 'cpp',
     'cpp_std=c++20',
     'b_lto=true',
     'buildtype=release',
+    'warning_level=0',
   ]
 )
 
 add_project_arguments('-D__HIP_PLATFORM_AMD__', language: 'cpp')
 
-app_sources = files(
+app_warning_args = [
+  '-Wall', 
+  '-Wextra', 
+  '-Wpedantic',
+  '-Wno-system-headers',
+]
+
+app_src = files(
   'src/app/main.cpp',
   'src/app/process.cpp',
   'src/cli/cli_parser.cpp',
@@ -20,14 +28,16 @@ app_sources = files(
   'src/filters/gaussian_blur.hip.cpp',
 )
 
-
 gpu_arch = '--offload-arch=gfx1030'
+
+inc_src = include_directories('.')
+inc_sys = include_directories(['vendor', '/opt/rocm/include'], is_system: true)
 
 executable(
   'hip-img-fx',
-  app_sources,
-  cpp_args: ['-fopenmp', '-march=native', '-ffast-math', gpu_arch],
+  app_src,
+  cpp_args: app_warning_args + ['-fopenmp', '-march=native', '-ffast-math', gpu_arch],
   link_args: ['-fopenmp', '-march=native', '-ffast-math', gpu_arch],
-  include_directories: [include_directories('.', 'vendor', '/opt/rocm/include')],
+  include_directories: [inc_src, inc_sys],
   install: true,
 )

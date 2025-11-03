@@ -1,125 +1,129 @@
 #include "cli_parser.h"
 
-void print_help()
+namespace imgfx::cli
 {
-    printf("\nUsage: hip-img-fx [options]\n");
-    printf("Options:\n");
-    printf("  --input <input_file|input_dir>     Specifies the input file or directory path.\n");
-    printf("  --output <output_file|output_dir>  Specifies the output file or directory path.\n");
-    printf("  --filter <filter_type>             Specifies the type of filter to apply (e.g., \"grayscale\", \"negative\", \"gaussian-blur\").\n");
-    printf("  --use-cpu                          Use CPU for processing instead of GPU.\n");
-    printf("  --help                             Displays this help information.\n");
-    printf("\n");
-    printf("Notes:\n");
-    printf("  - For batch processing, specify both --input and --output as directories.\n");
-    printf("  - For single image processing, specify both as files.\n");
-    printf("  - Supported filters: grayscale, negative, gaussian-blur\n");
-}
-
-cli_args_t parse_cli_args(int argc, char **argv)
-{
-    cli_args_t args = {
-        .input_file = nullptr,
-        .output_file = nullptr,
-        .filter_type = FILTER_TYPE::UNDEFINED,
-    };
-
-    for (int i = 1; i < argc; i++)
+    void print_help()
     {
-        if (strcmp(argv[i], "--input") == 0 && i + 1 < argc)
+        printf("\nUsage: hip-img-fx [options]\n");
+        printf("Options:\n");
+        printf("  --input <input_file|input_dir>     Specifies the input file or directory path.\n");
+        printf("  --output <output_file|output_dir>  Specifies the output file or directory path.\n");
+        printf("  --filter <filter_type>             Specifies the type of filter to apply (e.g., \"grayscale\", \"negative\", \"gaussian-blur\").\n");
+        printf("  --use-cpu                          Use CPU for processing instead of GPU.\n");
+        printf("  --help                             Displays this help information.\n");
+        printf("\n");
+        printf("Notes:\n");
+        printf("  - For batch processing, specify both --input and --output as directories.\n");
+        printf("  - For single image processing, specify both as files.\n");
+        printf("  - Supported filters: grayscale, negative, gaussian-blur\n");
+    }
+
+    cli_args_t parse_cli_args(int argc, char **argv)
+    {
+        cli_args_t args = {
+            .input_file = nullptr,
+            .output_file = nullptr,
+            .filter_type = imgfx::core::FILTER_TYPE::UNDEFINED,
+            .use_cpu = false,
+        };
+
+        for (int i = 1; i < argc; i++)
         {
-            args.input_file = argv[++i];
-        }
-        else if (strcmp(argv[i], "--output") == 0 && i + 1 < argc)
-        {
-            args.output_file = argv[++i];
-        }
-        else if (strcmp(argv[i], "--filter") == 0 && i + 1 < argc)
-        {
-            if (strcmp(argv[++i], "grayscale") == 0)
+            if (strcmp(argv[i], "--input") == 0 && i + 1 < argc)
             {
-                args.filter_type = FILTER_TYPE::GRAYSCALE;
+                args.input_file = argv[++i];
             }
-            else if (strcmp(argv[i], "negative") == 0)
+            else if (strcmp(argv[i], "--output") == 0 && i + 1 < argc)
             {
-                args.filter_type = FILTER_TYPE::NEGATIVE;
+                args.output_file = argv[++i];
             }
-            else if (strcmp(argv[i], "gaussian-blur") == 0)
+            else if (strcmp(argv[i], "--filter") == 0 && i + 1 < argc)
             {
-                args.filter_type = FILTER_TYPE::GAUSSIAN_BLUR;
+                if (strcmp(argv[++i], "grayscale") == 0)
+                {
+                    args.filter_type = imgfx::core::FILTER_TYPE::GRAYSCALE;
+                }
+                else if (strcmp(argv[i], "negative") == 0)
+                {
+                    args.filter_type = imgfx::core::FILTER_TYPE::NEGATIVE;
+                }
+                else if (strcmp(argv[i], "gaussian-blur") == 0)
+                {
+                    args.filter_type = imgfx::core::FILTER_TYPE::GAUSSIAN_BLUR;
+                }
+                else
+                {
+                    printf("Unknown filter type: %s\n", argv[i]);
+                    print_help();
+                    exit(1);
+                }
+            }
+            else if (strcmp(argv[i], "--use-cpu") == 0)
+            {
+                args.use_cpu = true;
+            }
+            else if (strcmp(argv[i], "--help") == 0)
+            {
+                print_help();
+                exit(0);
             }
             else
             {
-                printf("Unknown filter type: %s\n", argv[i]);
+                printf("Unknown argument: %s\n", argv[i]);
                 print_help();
                 exit(1);
             }
         }
-        else if (strcmp(argv[i], "--use-cpu") == 0)
+
+        bool has_error = false;
+        if (args.input_file == nullptr)
         {
-            args.use_cpu = true;
+            printf("Error: --input argument is required.\n");
+            has_error = true;
         }
-        else if (strcmp(argv[i], "--help") == 0)
+        if (args.output_file == nullptr)
         {
-            print_help();
-            exit(0);
+            printf("Error: --output argument is required.\n");
+            has_error = true;
         }
-        else
+        if (args.filter_type == imgfx::core::FILTER_TYPE::UNDEFINED)
         {
-            printf("Unknown argument: %s\n", argv[i]);
+            printf("Error: --filter argument is required.\n");
+            has_error = true;
+        }
+        if (has_error)
+        {
             print_help();
             exit(1);
         }
-    }
 
-    bool has_error = false;
-    if (args.input_file == nullptr)
-    {
-        printf("Error: --input argument is required.\n");
-        has_error = true;
-    }
-    if (args.output_file == nullptr)
-    {
-        printf("Error: --output argument is required.\n");
-        has_error = true;
-    }
-    if (args.filter_type == FILTER_TYPE::UNDEFINED)
-    {
-        printf("Error: --filter argument is required.\n");
-        has_error = true;
-    }
-    if (has_error)
-    {
-        print_help();
-        exit(1);
-    }
-
-    namespace fs = std::filesystem;
-    fs::path input_path(args.input_file);
-    fs::path output_path(args.output_file);
-    if (fs::is_directory(input_path) && fs::is_directory(output_path))
-    {
-        if (fs::equivalent(input_path, output_path))
+        namespace fs = std::filesystem;
+        fs::path input_path(args.input_file);
+        fs::path output_path(args.output_file);
+        if (fs::is_directory(input_path) && fs::is_directory(output_path))
         {
-            printf("WARNING: Input and output directories are the same!\n");
-            printf("This will overwrite all images in the input directory with the filtered images.\n");
-            printf("Continue? [Y/n]: ");
-            fflush(stdout);
-            char response[8] = {0};
-            if (fgets(response, sizeof(response), stdin))
+            if (fs::equivalent(input_path, output_path))
             {
-                if (response[0] == 'n' || response[0] == 'N')
+                printf("WARNING: Input and output directories are the same!\n");
+                printf("This will overwrite all images in the input directory with the filtered images.\n");
+                printf("Continue? [Y/n]: ");
+                fflush(stdout);
+                char response[8] = {0};
+                if (fgets(response, sizeof(response), stdin))
                 {
-                    printf("Aborted by user.\n");
-                    exit(1);
+                    if (response[0] == 'n' || response[0] == 'N')
+                    {
+                        printf("Aborted by user.\n");
+                        exit(1);
+                    }
                 }
             }
         }
+
+        printf("Input: %s\n", args.input_file);
+        printf("Output: %s\n", args.output_file);
+        printf("Filter Type: %s\n", filter_type_to_string(args.filter_type).c_str());
+
+        return args;
     }
-
-    printf("Input: %s\n", args.input_file);
-    printf("Output: %s\n", args.output_file);
-    printf("Filter Type: %s\n", filter_type_to_string(args.filter_type).c_str());
-
-    return args;
 }

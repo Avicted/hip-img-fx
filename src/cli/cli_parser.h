@@ -7,14 +7,17 @@
 
 #include "../core/gpu_utils.h"
 
-typedef struct
+namespace imgfx::cli
 {
-    const char *input_file;
-    const char *output_file;
-    FILTER_TYPE filter_type;
-    bool use_cpu;
-} cli_args_t;
+    typedef struct
+    {
+        const char *input_file;
+        const char *output_file;
+        imgfx::core::FILTER_TYPE filter_type;
+        bool use_cpu;
+    } cli_args_t;
 
-void print_help();
+    void print_help();
 
-cli_args_t parse_cli_args(int argc, char **argv);
+    cli_args_t parse_cli_args(int argc, char **argv);
+}

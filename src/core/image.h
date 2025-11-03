@@ -16,13 +16,13 @@ namespace imgfx::core
         int channels;
     } image_t;
 
-    struct image_meta_t
+    typedef struct
     {
         int offset; // start index of the image in the flattened buffer
         int width;
         int height;
         int channels;
-    };
+    } image_meta_t;
 
     bool has_supported_ext(const fs::path &p);
     image_t load_image(const char *filename);

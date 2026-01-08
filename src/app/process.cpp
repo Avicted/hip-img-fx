@@ -9,85 +9,62 @@ namespace imgfx::app
                           imgfx::core::FILTER_TYPE filter_type)
     {
         printf("num threads: %d\n", omp_get_max_threads());
+        printf("Processing %zu images individually on GPU\n", input_files.size());
 
-        std::vector<imgfx::core::image_t> input_images(input_files.size());
-        std::vector<imgfx::core::image_t> output_images(input_files.size());
-
-        // Load all images in parallel
-#pragma omp parallel for shared(input_images, output_images, input_files)
+        // Process each image one at a time for optimal performance
         for (size_t i = 0; i < input_files.size(); ++i)
         {
             const std::string &input_file = input_files[i];
-            imgfx::core::image_t img = imgfx::core::load_image(input_file.c_str());
-            if (img.data == nullptr)
+
+            // Load image
+            imgfx::core::image_t input_image = imgfx::core::load_image(input_file.c_str());
+            if (input_image.data == nullptr)
             {
-#pragma omp critical
                 fprintf(stderr, "ERROR: Failed to load input image: %s\n", input_file.c_str());
                 continue;
             }
-            input_images[i] = img;
 
-            if (img.data != nullptr)
+            // Allocate output image
+            imgfx::core::image_t output_image;
+            output_image.width = input_image.width;
+            output_image.height = input_image.height;
+            output_image.channels = input_image.channels;
+            size_t bytes = size_t(input_image.width) * input_image.height * input_image.channels;
+            output_image.data = (unsigned char *)malloc(bytes);
+
+            if (output_image.data == nullptr)
             {
-                imgfx::core::image_t out_img;
-                out_img.width = img.width;
-                out_img.height = img.height;
-                out_img.channels = img.channels;
-                size_t bytes = size_t(img.width) * img.height * img.channels;
-                out_img.data = (unsigned char *)malloc(bytes);
-                if (out_img.data == nullptr)
-                {
-#pragma omp critical
-                    {
-                        fprintf(stderr, "ERROR: Could not allocate memory for output image: %s\n", input_file.c_str());
-                    }
-                }
-                output_images[i] = out_img;
+                fprintf(stderr, "ERROR: Could not allocate memory for output image: %s\n", input_file.c_str());
+                free_image(&input_image);
+                continue;
             }
-        }
 
-        printf("Loaded %zu images for batch processing.\n", input_images.size());
+            // Apply filter on GPU
+            hipError_t err = apply_filter_gpu(filter_type, input_image, output_image, false, nullptr);
 
-        // Launch GPU kernel in chunks
-        size_t total_images = input_images.size();
-
-        for (size_t offset = 0; offset < total_images; offset += GPU_CHUNK_SIZE)
-        {
-            size_t current_chunk = std::min(static_cast<size_t>(GPU_CHUNK_SIZE), total_images - offset);
-            std::vector<imgfx::core::image_t> input_chunk(input_images.begin() + offset, input_images.begin() + offset + current_chunk);
-            std::vector<imgfx::core::image_t> output_chunk(output_images.begin() + offset, output_images.begin() + offset + current_chunk);
-
-            printf("Launching GPU filter kernel: %s (images %zu to %zu)\n",
-                   filter_type_to_string(filter_type).c_str(), offset, offset + current_chunk - 1);
-
-            hipError_t err = apply_filter_gpu(filter_type, input_chunk, output_chunk);
             if (err != hipSuccess)
             {
-                fprintf(stderr, "ERROR: Failed to apply GPU filter on chunk starting at image %zu\n", offset);
-                return -1;
+                fprintf(stderr, "ERROR: Failed to apply GPU filter on image: %s\n", input_file.c_str());
+                free_image(&input_image);
+                free_image(&output_image);
+                continue;
             }
-        }
 
-        // Save all output images in parallel
-#pragma omp parallel for shared(input_images, output_images, input_files, output_path)
-        for (size_t i = 0; i < input_files.size(); ++i)
-        {
-            fs::path in_path(input_files[i]);
+            // Save output image
+            fs::path in_path(input_file);
             fs::path out_file = fs::path(output_path) / in_path.filename();
 
-            if (!save_image(out_file.string().c_str(), &output_images[i]))
+            if (!save_image(out_file.string().c_str(), &output_image))
             {
-#pragma omp critical
-                {
-                    fprintf(stderr, "ERROR: Could not save output image: %s\n", out_file.string().c_str());
-                }
+                fprintf(stderr, "ERROR: Could not save output image: %s\n", out_file.string().c_str());
             }
 
-            free_image(&input_images[i]);
-            free_image(&output_images[i]);
+            // Cleanup
+            free_image(&input_image);
+            free_image(&output_image);
         }
 
-        printf("Batch processing complete: %zu images processed.\n", input_images.size());
+        printf("Batch processing complete: %zu images processed.\n", input_files.size());
 
         return 0;
     }

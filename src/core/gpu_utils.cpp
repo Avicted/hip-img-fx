@@ -109,42 +109,55 @@ namespace imgfx::core
 
     hipError_t apply_filter_gpu(
         FILTER_TYPE filter_type,
-        std::vector<image_t> &input_images,
-        std::vector<image_t> &output_images)
+        image_t &input_image,
+        image_t &output_image,
+        bool enable_timing,
+        GPUTimings *timings)
     {
-        // Compute total pixels and metadata
-        size_t total_bytes = 0;
-        std::vector<image_meta_t> metas(input_images.size());
+        // Create timing events if requested
+        HIPEvent start_h2d, end_h2d, start_kernel, end_kernel, start_d2h, end_d2h;
 
-        for (size_t i = 0; i < input_images.size(); ++i)
+        if (enable_timing && timings)
         {
-            metas[i].width = input_images[i].width;
-            metas[i].height = input_images[i].height;
-            metas[i].channels = input_images[i].channels;
-            metas[i].offset = total_bytes / sizeof(unsigned char);
-            total_bytes += size_t(input_images[i].width) * input_images[i].height * input_images[i].channels;
+            timings->h2d_ms = 0.0f;
+            timings->kernel_ms = 0.0f;
+            timings->d2h_ms = 0.0f;
+            timings->total_ms = 0.0f;
         }
 
-        // Allocate contiguous device buffers
-        DeviceBuffer d_input, d_output, d_metas;
+        // Calculate image size
+        size_t total_bytes = size_t(input_image.width) * input_image.height * input_image.channels;
+
+        // Prepare metadata
+        image_meta_t meta;
+        meta.width = input_image.width;
+        meta.height = input_image.height;
+        meta.channels = input_image.channels;
+        meta.offset = 0;
+
+        // Allocate device buffers
+        DeviceBuffer d_input, d_output, d_meta;
         HIP_ERRCHK(hipMalloc(&d_input.ptr, total_bytes));
         HIP_ERRCHK(hipMalloc(&d_output.ptr, total_bytes));
-        HIP_ERRCHK(hipMalloc(&d_metas.ptr, sizeof(image_meta_t) * metas.size()));
+        HIP_ERRCHK(hipMalloc(&d_meta.ptr, sizeof(image_meta_t)));
 
-        // Copy pixels to device
-        size_t pos = 0;
-        for (size_t i = 0; i < input_images.size(); ++i)
+        // === H2D Transfer ===
+        if (enable_timing)
+            start_h2d.record();
+
+        // Copy image to device
+        HIP_ERRCHK(hipMemcpy(d_input.ptr, input_image.data, total_bytes, hipMemcpyHostToDevice));
+        HIP_ERRCHK(hipMemcpy(d_meta.ptr, &meta, sizeof(image_meta_t), hipMemcpyHostToDevice));
+
+        if (enable_timing)
         {
-            size_t bytes = size_t(input_images[i].width) * input_images[i].height * input_images[i].channels;
-            HIP_ERRCHK(hipMemcpy((unsigned char *)d_input.ptr + pos, input_images[i].data, bytes, hipMemcpyHostToDevice));
-            pos += bytes;
+            end_h2d.record();
+            end_h2d.synchronize();
         }
 
-        // Copy metadata
-        HIP_ERRCHK(hipMemcpy(d_metas.ptr, metas.data(), sizeof(image_meta_t) * metas.size(), hipMemcpyHostToDevice));
-
-        // Launch kernel
-        // printf("Launching GPU filter kernel: %s\n", filter_type_to_string(filter_type).c_str());
+        // === Kernel Execution ===
+        if (enable_timing)
+            start_kernel.record();
 
         int threads = 512;
         int blocks = (total_bytes + threads - 1) / threads;
@@ -156,8 +169,8 @@ namespace imgfx::core
             hipLaunchKernelGGL(imgfx::filters::grayscale_kernel, dim3(blocks), dim3(threads), 0, 0,
                                (unsigned char *)d_input.ptr,
                                (unsigned char *)d_output.ptr,
-                               (image_meta_t *)d_metas.ptr,
-                               (int)input_images.size());
+                               (image_meta_t *)d_meta.ptr,
+                               1);
             break;
         }
         case FILTER_TYPE::NEGATIVE:
@@ -165,8 +178,8 @@ namespace imgfx::core
             hipLaunchKernelGGL(imgfx::filters::negative_kernel, dim3(blocks), dim3(threads), 0, 0,
                                (unsigned char *)d_input.ptr,
                                (unsigned char *)d_output.ptr,
-                               (image_meta_t *)d_metas.ptr,
-                               (int)input_images.size());
+                               (image_meta_t *)d_meta.ptr,
+                               1);
             break;
         }
         case FILTER_TYPE::GAUSSIAN_BLUR:
@@ -180,15 +193,15 @@ namespace imgfx::core
             size_t shared_bytes = sizeof(float) * GAUSSIAN_BLUR_AMOUNT * GAUSSIAN_BLUR_AMOUNT;
 
             hipLaunchKernelGGL(
-                imgfx::filters::gaussian_blur_kernel, // kernel
-                dim3(blocks),                         // grid
-                dim3(threads),                        // block
-                shared_bytes,                         // dynamic shared memory
-                0,                                    // stream
-                (unsigned char *)d_input.ptr,         // kernel args start here
+                imgfx::filters::gaussian_blur_kernel,
+                dim3(blocks),
+                dim3(threads),
+                shared_bytes,
+                0,
+                (unsigned char *)d_input.ptr,
                 (unsigned char *)d_output.ptr,
-                (image_meta_t *)d_metas.ptr,
-                (int)input_images.size(),
+                (image_meta_t *)d_meta.ptr,
+                1,
                 GAUSSIAN_BLUR_AMOUNT);
             break;
         }
@@ -199,21 +212,44 @@ namespace imgfx::core
         }
         }
 
+        if (enable_timing)
+        {
+            end_kernel.record();
+        }
+
         HIP_ERRCHK(hipDeviceSynchronize());
 
-        // Copy back flattened output to original image buffers
-        pos = 0;
-        for (size_t i = 0; i < output_images.size(); ++i)
+        if (enable_timing)
         {
-            size_t bytes = size_t(output_images[i].width) * output_images[i].height * output_images[i].channels;
-            HIP_ERRCHK(hipMemcpy(output_images[i].data, (unsigned char *)d_output.ptr + pos, bytes, hipMemcpyDeviceToHost));
-            pos += bytes;
+            end_kernel.synchronize();
+        }
+
+        // === D2H Transfer ===
+        if (enable_timing)
+            start_d2h.record();
+
+        // Copy result back to host
+        HIP_ERRCHK(hipMemcpy(output_image.data, d_output.ptr, total_bytes, hipMemcpyDeviceToHost));
+
+        if (enable_timing)
+        {
+            end_d2h.record();
+            end_d2h.synchronize();
+        }
+
+        // Calculate timings
+        if (enable_timing && timings)
+        {
+            timings->h2d_ms = HIPEvent::elapsed_time(start_h2d, end_h2d);
+            timings->kernel_ms = HIPEvent::elapsed_time(start_kernel, end_kernel);
+            timings->d2h_ms = HIPEvent::elapsed_time(start_d2h, end_d2h);
+            timings->total_ms = timings->h2d_ms + timings->kernel_ms + timings->d2h_ms;
         }
 
         // Free device memory
         HIP_ERRCHK(hipFree(d_input.ptr));
         HIP_ERRCHK(hipFree(d_output.ptr));
-        HIP_ERRCHK(hipFree(d_metas.ptr));
+        HIP_ERRCHK(hipFree(d_meta.ptr));
 
         return hipSuccess;
     }

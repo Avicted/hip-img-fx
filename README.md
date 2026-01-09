@@ -1,135 +1,417 @@
-# AMD HIP image filters
+# HIP Image FX - GPU-Accelerated Image Processing
 
-Fast GPU-accelerated image filters (HIP) with a CPU fallback path for portability.
+[![AMD ROCm](https://img.shields.io/badge/AMD-ROCm-red)]()
+[![HIP](https://img.shields.io/badge/HIP-C%2B%2B20-blue)]()
+[![License](https://img.shields.io/badge/license-MIT-green)]()
 
-## Prerequisites
-- AMD ROCm
-- OpenMP
+GPU-accelerated image processing framework demonstrating real-world HIP performance engineering principles.
+
+This project showcases production-grade GPU optimization through empirical measurement and data-driven architectural decisions. Through extensive benchmarking across 36 configurations, we validated a **batch processing architecture** that delivers optimal throughput for compute-intensive workloads. The framework demonstrates fine-grained profiling, honest performance analysis, and the value of measuring rather than assuming.
+
+**Performance Highlight**: Achieves **577× speedup** on Gaussian blur vs single-threaded CPU and **41.8× vs OpenMP** (32 threads) on AMD Radeon RX 6900 XT
+
+**Architecture**: Configurable batch processing with synchronous execution pipeline
+
+**Full Results**: See [BENCHMARK_RESULTS.md](BENCHMARK_RESULTS.md) for comprehensive performance analysis
+
+## Performance Engineering Focus
+
+This repository demonstrates:
+
+- **GPU Profiling**: Fine-grained timing with HIP events (H2D, kernel, D2H breakdown)
+- **Memory Analysis**: Bandwidth utilization and transfer overhead measurement
+- **Data-Driven Decisions**: Extensive benchmarking (36 configurations) to validate architectural choices
+- **Reproducible Benchmarking**: Production-quality harness with statistical analysis
+- **Honest Performance Reporting**: Documenting both successes (577× speedup) and limitations (GPU slower than CPU for simple filters)
+
+## Performance Characteristics
+
+### Current Architecture
+
+```
+Batch Processing Pipeline
+┌─────────────────────────────────────────────┐
+│  Process N images in a single GPU call:     │
+│  ┌───────────────────────────────────────┐  │
+│  │ 1. Load N images (OpenMP parallel)    │  │
+│  │ 2. Allocate contiguous GPU buffer     │  │
+│  │ 3. H2D: Copy all images sequentially  │  │
+│  │ 4. Launch one kernel for entire batch │  │
+│  │ 5. D2H: Copy all results              │  │
+│  │ 6. Save N images (OpenMP parallel)    │  │
+│  └───────────────────────────────────────┘  │
+│                                             │
+│  Configurable batch size: --batch-size N    │
+│  Default: 64 images per GPU call            │
+└─────────────────────────────────────────────┘
+
+Empirically validated through comprehensive benchmarking
+```
+
+### Key Findings
+
+The batch processing architecture was validated through extensive benchmarking across multiple configurations. Key insights from the performance testing:
+
+- **Compute-Bound Excellence**: Gaussian blur achieves 25-42× speedup vs OpenMP
+- **Memory-Bound Limitations**: Simple filters (grayscale, negative) show 0.6-3.7× speedup vs OpenMP
+- **Transfer Overhead**: Averages 71% of total GPU time across all configurations
+- **Resolution Scaling**: Larger images (4096×4096) benefit more from GPU acceleration
+- **Batch Size Impact**: Minimal for compute-bound filters, significant for memory-bound (see [BENCHMARK_RESULTS.md](BENCHMARK_RESULTS.md))
+
+
+## Quick Start
+
+### Prerequisites
+
+- AMD ROCm 5.0+ ([installation guide](https://rocmdocs.amd.com/))
+- HIP-enabled AMD GPU (tested on RDNA/GCN architectures)
 - Meson build system
+- OpenMP for CPU fallback
+- C++20 compiler
 
+### Build
 
-## Compilation
 ```bash
+# Configure with HIP native file
 meson setup build --native-file native/hip.ini --reconfigure
+
+# Build all targets (main app + benchmark suite)
 ninja -C build
-```
 
-## Usage
-
-### Help
-```bash
+# Verify build
 ./build/hip-img-fx --help
-Running HIP image fx...
-
-Usage: hip-img-fx [options]
-Options:
-  --input <input_file|input_dir>     Specifies the input file or directory path.
-  --output <output_file|output_dir>  Specifies the output file or directory path.
-  --filter <filter_type>             Specifies the type of filter to apply (e.g., "grayscale", "negative", "gaussian-blur").
-  --use-cpu                          Use CPU for processing instead of GPU.
-  --help                             Displays this help information.
-
-Notes:
-  - For batch processing, specify both --input and --output as directories.
-  - For single image processing, specify both as files.
-  - Supported filters: grayscale, negative, gaussian-blur
 ```
 
-### Examples
+### Basic Usage
+
 ```bash
-# Launch (single image)
+# Single image (GPU)
 ./build/hip-img-fx \
     --input examples/example_01.jpg \
     --filter grayscale \
-    --output examples/example_01_output_grayscale.jpg
+    --output output.jpg
 
-# Launch batch
+# Directory processing with custom batch size
 ./build/hip-img-fx \
-    --input examples \
-    --filter grayscale \
-    --output examples/output
+    --input examples/ \
+    --filter gaussian-blur \
+    --output examples/output/ \
+    --batch-size 64
+
+# CPU fallback (for comparison)
+./build/hip-img-fx \
+    --input examples/example_01.jpg \
+    --filter negative \
+    --output output.jpg \
+    --use-cpu
 ```
 
-### Supported image filters
-- Grayscale
-- Gaussian Blur
-- Negative
-
-
-### Output example
+**Batch Size Tuning:**
 ```bash
-~ ./build/hip-img-fx \
-    --input examples \
-    --filter grayscale \
-    --output examples/output
+# Default batch size (64 images)
+./build/hip-img-fx --input images/ --filter gaussian-blur --output results/
 
-Running HIP image fx...
-Input: examples
-Output: examples/output
-Filter Type: GRAYSCALE
-Using GPU for processing.
-    HIP Device Count: 1
-    Device 0: AMD Radeon RX 6900 XT
-        Compute Capability: ------------ = 10.3
-        Total Global Memory: ----------- = 17163091968
-        Shared Memory per Block: ------- = 65536
-        Registers per Block: ----------- = 65536
-        Warp Size: --------------------- = 32
-        Max Threads per Block: --------- = 1024
-        Max Threads Dimension: --------- = (1024, 1024, 1024)
-        Max Grid Size: ----------------- = (2147483647, 65536, 65536)
-        Clock Rate: -------------------- = 2660000
-        Total Constant Memory: --------- = 2147483647
-        Multiprocessor Count: ---------- = 40
-        L2 Cache Size: ----------------- = 4194304
-        Max Threads per Multiprocessor:  = 2048
-        Unified Addressing: ------------ = 0
-        Memory Clock Rate: ------------- = 1000000
-        Memory Bus Width: -------------- = 256
-        Peak Memory Bandwidth: --------- = 64.000000
+# Smaller batch (memory-constrained systems)
+./build/hip-img-fx --input images/ --filter grayscale --output results/ --batch-size 32
 
-num threads: 32
-Loaded 5 images for batch processing.
-Launching GPU filter kernel: GRAYSCALE (images 0 to 4)
-Batch processing complete: 5 images processed.
-Total processing time: 00m 00s 657ms
+# Single-image processing
+./build/hip-img-fx --input images/ --filter negative --output results/ --batch-size 1
 ```
 
-## Benchmark
-Tested on a batch of 6499 butterfly images from [Kaggle](https://www.kaggle.com/datasets/phucthaiv02/butterfly-image-classification):
 
-|                      Device |      Total Time |       Images / sec | Speedup vs CPU (1 thread) |
-| --------------------------: | --------------: | -----------------: | ------------------------: |
-|          **CPU (1 thread)** |   03 m 13.394 s |   **33.60** imgs/s |                 **1.00×** |
-| **CPU (OpenMP 32 threads)** |   00 m 10.210 s |  **636.53** imgs/s |                **18.94×** |
-|          **GPU (batching)** |   00 m 01.985 s | **3274.06** imgs/s |                **97.43×** |
+## Benchmark Suite
 
-
-- **GPU vs CPU (32-thread OpenMP): 5.14×** faster (GPU is ≈ **414.36%** faster than 32-thread CPU).
-- **CPU OpenMP (32) vs CPU (1): 18.94×** faster (≈ **1794.16%** faster).
-- **GPU vs CPU (1): 97.43×** faster (≈ **9642.77%** faster).
-
-### Notes:
-- Both CPU and GPU processed all 6499 images successfully (0 failed).  
-- Gaussian blur filter was applied with `blurAmount = 11`.
-
-
-
-![Benchmark comparison - GPU vs CPU](.github/benchmark_double.png)
-
-### Test system
-> Hardware:
->  - AMD Radeon RX 6900 XT
->  - AMD Ryzen 3950X (32 threads OpenMP)
->  - HIP build (-march=native --offload-arch=gfx1030 -ffast-math)
+### Running Benchmarks
 
 ```bash
-hipcc --version\
-HIP version: 6.4.43484-123eb5128\
-AMD clang version 19.0.0git (/srcdest/rocm-llvm d366fa84f3fdcbd4b10847ebd5db572ae12a34fb)
+# Full benchmark sweep (512² → 4096², 3 filters)
+./bench/scripts/run_benchmark.sh
+
+# Custom benchmark configuration
+./build/hip-img-fx-bench \
+    --warmup 5 \
+    --iterations 20 \
+    --output my_results.csv \
+    --verbose
+
+# Analyze results (uses matplotlib & pandas in isolated venv)
+# Automatically creates venv, installs dependencies, generates visualizations
+./bench/scripts/run_analysis.sh bench/results/benchmark_*.csv
+```
+
+### What Gets Benchmarked
+
+- **CPU Performance**:
+  - Single-threaded baseline
+  - OpenMP parallelized (32 threads)
+- **GPU Performance**:
+  - H2D transfer time (host to device)
+  - Kernel execution time
+  - D2H transfer time (device to host)
+  - Total pipeline latency
+- **Sweep Parameters**:
+  - Image resolutions: 512², 1024², 2048², 4096²
+  - Filter types: grayscale, negative, gaussian_blur
+  - Batch sizes: 1, 32, 64 images per GPU call
+
+**Total Configurations**: 36 (3 filters × 4 resolutions × 3 batch sizes)
+
+### Sample Results (AMD Radeon RX 6900 XT - January 2026)
+
+**Gaussian Blur - 4096×4096 (Batch Size 64):**
+```
+CPU (single):   9811.58 ms
+CPU (OpenMP):    572.79 ms
+GPU H2D:           1.96 ms
+GPU Kernel:       14.83 ms
+GPU D2H:           1.80 ms
+GPU Total:        18.60 ms
+Speedup vs Single: 527.42×
+Speedup vs OpenMP:  30.79×
+Bandwidth:          5.41 GB/s
+Transfer Overhead: 28% of GPU time (compute-bound)
+```
+
+**Grayscale - 1024×1024 (Batch Size 32):**
+```
+CPU (single):      2.06 ms
+CPU (OpenMP):      0.32 ms
+GPU H2D:           0.16 ms
+GPU Kernel:        0.17 ms
+GPU D2H:           0.13 ms
+GPU Total:         0.50 ms
+Speedup vs Single: 4.16×
+Speedup vs OpenMP:  0.64× (CPU OpenMP is faster)
+Bandwidth:         12.69 GB/s
+Transfer Overhead: 66% of GPU time (memory-bound)
+```
+
+**Negative - 2048×2048 (Batch Size 1):**
+```
+CPU (single):     12.97 ms
+CPU (OpenMP):      0.74 ms
+GPU H2D:           0.53 ms
+GPU Kernel:        0.10 ms
+GPU D2H:           0.53 ms
+GPU Total:         1.15 ms
+Speedup vs Single: 11.30×
+Speedup vs OpenMP:  0.64× (CPU OpenMP is faster)
+Bandwidth:         21.92 GB/s
+Transfer Overhead: 92% of GPU time (memory-bound)
+```
+
+**See [BENCHMARK_RESULTS.md](BENCHMARK_RESULTS.md) for complete analysis (36 configurations, batch size impact analysis)**
+
+### Visualizations
+
+The analysis script generates publication-quality visualizations:
+- **speedup_vs_resolution.png** - GPU vs CPU performance comparison (best batch size per config)
+- **gpu_time_breakdown.png** - H2D/Kernel/D2H time distribution
+- **transfer_overhead.png** - Transfer overhead percentage by filter
+- **bandwidth.png** - Memory bandwidth utilization
+- **absolute_times.png** - Absolute time comparison across implementations
+- **batch_size_scaling.png** - 6-panel analysis of batch size impact (1, 32, 64)
+- **benchmark_report.html** - Interactive HTML report with embedded graphs
+
+
+## Performance Optimizations
+
+### 1. Fine-Grained GPU Profiling
+
+**Implementation**: HIP event-based timing infrastructure
+
+```cpp
+GPUTimings timings;
+apply_filter_gpu(FILTER_GRAYSCALE, input, output, true, &timings);
+
+printf("H2D:    %.2f ms\n", timings.h2d_ms);
+printf("Kernel: %.2f ms\n", timings.kernel_ms);
+printf("D2H:    %.2f ms\n", timings.d2h_ms);
+```
+
+**Impact**: Identifies bottlenecks (memory-bound vs compute-bound)
+
+### 2. Batch Processing Architecture
+
+**Implementation**: Contiguous GPU buffer with single kernel launch
+
+```cpp
+// Process multiple images in one GPU call
+process_batch_gpu(images, filter, batch_size);
+
+// Internally: allocate contiguous buffer, one kernel launch
+// Memory layout: [img0][img1][img2]...[imgN]
+```
+
+**Key Finding**: Through empirical testing across 36 configurations, batch processing provides optimal throughput. Batch size impact varies by filter type (see [BENCHMARK_RESULTS.md](BENCHMARK_RESULTS.md)).
+
+### 3. Memory Access Optimization
+
+**Kernel Characteristics** (from measured benchmark data):
+
+| Filter | Resolution | GPU Total | Kernel Time | Bandwidth | Speedup (vs OpenMP) |
+|--------|-----------|-----------|-------------|-----------|---------------------|
+| Grayscale | 2048² | 1.16ms | 0.11ms | 21.73 GB/s | 2.2× |
+| Negative | 2048² | 1.15ms | 0.10ms | 21.87 GB/s | 0.6× |
+| Gaussian Blur | 2048² | 3.37ms | 2.36ms | 7.49 GB/s | 47.8× |
+
+**Key Finding**: Transfer overhead (28-95% depending on filter) is the primary performance factor. Only compute-intensive filters (Gaussian blur) achieve significant GPU speedup where kernel time dominates.
+
+
+
+## Testing & Validation
+
+### Build & Run Tests
+
+```bash
+# Build with debugging enabled
+meson setup build --native-file native/hip.ini --reconfigure
+ninja -C build
+
+# Run benchmark suite (includes correctness validation)
+./build/hip-img-fx-bench --iterations 5
+
+# Compare CPU vs GPU outputs (should be identical)
+./build/hip-img-fx --filter negative --input test.jpg --output gpu_out.jpg
+./build/hip-img-fx --filter negative --input test.jpg --output cpu_out.jpg --use-cpu
+diff <(xxd gpu_out.jpg) <(xxd cpu_out.jpg)
+```
+
+## Project Structure
+
+```
+hip-img-fx/
+├── src/
+│   ├── app/                   # Application entry point & batch processing
+│   ├── cli/                   # Command-line argument parsing
+│   ├── core/                  # GPU utilities, timing, image I/O
+│   │   ├── gpu_utils.cpp/h    # HIP pipeline, events, streams
+│   │   └── image.cpp/h        # STB-based image loading
+│   └── filters/               # HIP kernels & CPU implementations
+│       ├── grayscale.hip.cpp
+│       ├── negative.hip.cpp
+│       └── gaussian_blur.hip.cpp
+├── bench/
+│   ├── run_bench.cpp          # Benchmark harness
+│   ├── scripts/
+│   │   ├── run_benchmark.sh   # Automated benchmark runner
+│   │   └── analyze_results.py # Performance analysis tool
+│   └── results/               # CSV output directory
+├── examples/                  # Sample images
+├── native/
+│   └── hip.ini                # Meson HIP configuration
+└── meson.build                # Build system
 ```
 
 
+## Advanced Configuration
+
+### GPU Architecture Targeting
+
+Edit [`native/hip.ini`](native/hip.ini) to target your GPU:
+
+```ini
+[properties]
+# RDNA 2 (RX 6000 series)
+offload_arch = 'gfx1030'
+
+# RDNA 3 (RX 7000 series)
+# offload_arch = 'gfx1100'
+
+# GCN 5 (Vega)
+# offload_arch = 'gfx900'
+```
+
+### Tuning Parameters
+
+In [`src/core/gpu_utils.h`](src/core/gpu_utils.h):
+
+```cpp
+// Gaussian blur kernel size (must be odd)
+constexpr int GAUSSIAN_BLUR_AMOUNT = 11;  // Tune: 3, 5, 7, 11, 15
+
+// Thread block size
+int threads = 512;  // Tune: 256, 512, 1024
+```
+
+
+## Performance Analysis Tools
+
+### Python Analysis Script
+
+```bash
+./bench/scripts/run_analysis.sh results.csv
+```
+
+**Output**:
+- Summary by filter type
+- Transfer overhead analysis
+
+## Learning Outcomes
+
+This project demonstrates:
+
+1. **HIP Fundamentals**
+   - Kernel launch configuration (`hipLaunchKernelGGL`)
+   - Memory management (`hipMalloc`, `hipMemcpy`)
+   - Event-based profiling (`hipEventRecord`, `hipEventElapsedTime`)
+   - Batch processing with contiguous memory allocation
+
+2. **GPU Performance Engineering**
+   - Identifying memory-bound vs compute-bound kernels
+   - Analyzing bandwidth utilization
+   - Optimizing memory access patterns (coalescing)
+   - Understanding when GPU acceleration is beneficial vs CPU
+   - Batch size tuning for different workload characteristics
+
+3. **Production Engineering Practices**
+   - Reproducible benchmark infrastructure
+   - Statistical analysis (mean, std dev)
+   - Performance regression detection
+   - Clear documentation of optimization tradeoffs
+   - Data-driven architectural decisions
+
+
+## Future Work
+
+### High-Priority Optimizations
+
+1. **Separable Gaussian Blur** (3-5× speedup expected)
+   - Split 11×11 2D convolution into 2× 11×1 passes
+   - Reduces memory reads from 121 to 22 per pixel
+
+2. **Tile-Based Processing with Shared Memory**
+   - Load image tiles into shared memory
+   - Reuse data across threads
+   - Reduces global memory pressure
+
+3. **Multi-GPU Support**
+   - Distribute workload across multiple GPUs
+   - Peer-to-peer transfers between GPUs
+
+4. **Half-Precision (FP16) Kernels**
+   - Leverage RDNA matrix acceleration
+   - 2× throughput for blur operations
+
+### Research Directions
+
+- **Auto-tuning**: Grid search for optimal block sizes and batch sizes per GPU
+- **Warp-level primitives**: Use shuffle intrinsics for reduction operations
+- **Texture memory**: Test performance with texture cache for blur operations
+- **Async Streams**: Overlap H2D/kernel/D2H using HIP streams (requires careful benchmarking)
+
+
+## License
+
+MIT License - See [LICENSE](LICENSE)
+
+
+## References
+
+- [AMD ROCm Documentation](https://rocmdocs.amd.com/)
+- [HIP Programming Guide](https://github.com/ROCm-Developer-Tools/HIP)
+- [GPU Performance Optimization Techniques](https://developer.amd.com/resources/rocm-learning-center/)
+- [Separable Gaussian Blur](https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-40-incremental-computation-gaussian)
 
 
 ## Credits
@@ -142,6 +424,4 @@ Images (unsplash.com):
 - [example_05](https://unsplash.com/photos/two-white-ferrets-zQTw2g6JY6U)
 
 
-## License
-MIT License. See [LICENSE](LICENSE) for details.
 

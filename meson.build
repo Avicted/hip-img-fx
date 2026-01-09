@@ -1,5 +1,5 @@
 project('hip-img-fx', 'cpp',
-  version: '0.1.0',
+  version: '0.2.0',
   default_options: [
     'cpp_std=c++20',
     'b_lto=true',
@@ -40,4 +40,23 @@ executable(
   link_args: ['-fopenmp', '-march=native', '-ffast-math', gpu_arch],
   include_directories: [inc_src, inc_sys],
   install: true,
+)
+
+# Benchmark executable
+bench_src = files(
+  'bench/run_bench.cpp',
+  'src/core/gpu_utils.cpp',
+  'src/core/image.cpp',
+  'src/filters/grayscale.hip.cpp',
+  'src/filters/negative.hip.cpp',
+  'src/filters/gaussian_blur.hip.cpp',
+)
+
+executable(
+  'hip-img-fx-bench',
+  bench_src,
+  cpp_args: app_warning_args + ['-fopenmp', '-march=native', '-ffast-math', gpu_arch],
+  link_args: ['-fopenmp', '-march=native', '-ffast-math', gpu_arch],
+  include_directories: [inc_src, inc_sys],
+  install: false,
 )

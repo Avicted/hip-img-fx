@@ -2,7 +2,6 @@
 
 namespace imgfx::filters
 {
-
     extern "C" __global__ void gaussian_blur_kernel(
         const unsigned char *input,
         unsigned char *output,
@@ -10,28 +9,27 @@ namespace imgfx::filters
         int num_images,
         int blurAmount)
     {
-        int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-        // Determine which image this pixel belongs to
-        int img_idx = 0;
-        while (img_idx < num_images &&
-               idx >= metas[img_idx].offset + metas[img_idx].width * metas[img_idx].height * metas[img_idx].channels)
-        {
-            img_idx++;
-        }
-
+        const int img_idx = (int)blockIdx.y;
         if (img_idx >= num_images)
         {
             return;
         }
 
-        const imgfx::core::image_meta_t &meta = metas[img_idx];
-        int pixel_idx = idx - meta.offset; // index inside this image
+        const imgfx::core::image_meta_t meta = metas[img_idx];
+        const size_t idx_in_image = (size_t)blockIdx.x * (size_t)blockDim.x + (size_t)threadIdx.x;
+        const size_t total_bytes = (size_t)meta.width * (size_t)meta.height * (size_t)meta.channels;
+        if (idx_in_image >= total_bytes)
+        {
+            return;
+        }
 
-        int c = pixel_idx % meta.channels;
-        int pos_in_image = pixel_idx / meta.channels;
-        int x = pos_in_image % meta.width;
-        int y = pos_in_image / meta.width;
+        const size_t pixel_idx = idx_in_image; // index inside this image (byte index)
+
+        const size_t channels = (size_t)meta.channels;
+        int c = (int)(pixel_idx % channels);
+        size_t pos_in_image = pixel_idx / channels;
+        int x = (int)(pos_in_image % (size_t)meta.width);
+        int y = (int)(pos_in_image / (size_t)meta.width);
 
         extern __shared__ float kernel[];
         int radius = blurAmount / 2;
@@ -43,7 +41,6 @@ namespace imgfx::filters
             float sum = 0.0f;
             for (int ky = -radius; ky <= radius; ky++)
             {
-
                 for (int kx = -radius; kx <= radius; kx++)
                 {
                     float v = expf(-(kx * kx + ky * ky) / (2.0f * sigma * sigma));
@@ -67,8 +64,8 @@ namespace imgfx::filters
             for (int kx = -radius; kx <= radius; kx++)
             {
                 int nx = min(max(x + kx, 0), meta.width - 1);
-                int nidx = (ny * meta.width + nx) * meta.channels + c;
-                pixel_value += input[meta.offset + nidx] * kernel[(ky + radius) * blurAmount + (kx + radius)];
+                size_t nidx = ((size_t)ny * (size_t)meta.width + (size_t)nx) * channels + (size_t)c;
+                pixel_value += input[(size_t)meta.offset + nidx] * kernel[(ky + radius) * blurAmount + (kx + radius)];
             }
         }
 
@@ -83,7 +80,7 @@ namespace imgfx::filters
             outv = 255;
         }
 
-        output[meta.offset + pixel_idx] = static_cast<unsigned char>(outv);
+        output[(size_t)meta.offset + pixel_idx] = static_cast<unsigned char>(outv);
     }
 
     void gaussian_blur_cpu(

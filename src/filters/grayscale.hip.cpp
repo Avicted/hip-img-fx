@@ -8,28 +8,31 @@ namespace imgfx::filters
         const imgfx::core::image_meta_t *metas,
         int num_images)
     {
-        int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-        // Total pixels = sum of width*height*channels for all images
-        // We'll compute which image this pixel belongs to
-        int img_idx = 0;
-        while (img_idx < num_images && idx >= metas[img_idx].offset + metas[img_idx].width * metas[img_idx].height * metas[img_idx].channels)
-        {
-            img_idx++;
-        }
-
+        const int img_idx = (int)blockIdx.y;
         if (img_idx >= num_images)
         {
             return;
         }
 
-        const imgfx::core::image_meta_t &meta = metas[img_idx];
-        int pixel_idx = idx - meta.offset;
+        const imgfx::core::image_meta_t meta = metas[img_idx];
+        const size_t idx_in_image = (size_t)blockIdx.x * (size_t)blockDim.x + (size_t)threadIdx.x;
+        const size_t image_bytes = (size_t)meta.width * (size_t)meta.height * (size_t)meta.channels;
+        if (idx_in_image >= image_bytes)
+        {
+            return;
+        }
 
-        int c = pixel_idx % meta.channels;
-        int pixel_base = idx - c;
+        const size_t channels = (size_t)meta.channels;
+        const size_t c = idx_in_image % channels;
+        const size_t pixel_base_in_image = idx_in_image - c;
+        if (pixel_base_in_image + 2 >= image_bytes)
+        {
+            return;
+        }
 
-        unsigned char r = input[pixel_base];
+        const size_t pixel_base = (size_t)meta.offset + pixel_base_in_image;
+
+        unsigned char r = input[pixel_base + 0];
         unsigned char g = input[pixel_base + 1];
         unsigned char b = input[pixel_base + 2];
 

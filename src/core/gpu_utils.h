@@ -16,7 +16,7 @@ namespace imgfx::core
 {
     constexpr int GAUSSIAN_BLUR_AMOUNT = 11; // Must be odd
 
-    // Error checking helper
+    // Error checking helper (defined first for use in classes below)
     inline void hip_errchk(hipError_t err, const char *file, int line)
     {
         if (err != hipSuccess)
@@ -28,6 +28,89 @@ namespace imgfx::core
     }
 
 #define HIP_ERRCHK(err) (imgfx::core::hip_errchk(err, __FILE__, __LINE__))
+
+    // GPU Timing Infrastructure
+    struct GPUTimings
+    {
+        float h2d_ms = 0.0f;    // Host to Device transfer time
+        float kernel_ms = 0.0f; // Kernel execution time
+        float d2h_ms = 0.0f;    // Device to Host transfer time
+        float total_ms = 0.0f;  // Total GPU pipeline time
+
+        void print() const
+        {
+            printf("GPU Timings:\n");
+            printf("  H2D:    %8.3f ms\n", h2d_ms);
+            printf("  Kernel: %8.3f ms\n", kernel_ms);
+            printf("  D2H:    %8.3f ms\n", d2h_ms);
+            printf("  Total:  %8.3f ms\n", total_ms);
+        }
+    };
+
+    // RAII wrapper for HIP events with stream support
+    class HIPEvent
+    {
+    private:
+        hipEvent_t event;
+        bool valid;
+
+    public:
+        HIPEvent() : valid(false)
+        {
+            hipError_t err = hipEventCreate(&event);
+            if (err == hipSuccess)
+            {
+                valid = true;
+            }
+        }
+
+        ~HIPEvent()
+        {
+            if (valid)
+            {
+                (void)hipEventDestroy(event);
+            }
+        }
+
+        // Disable copy
+        HIPEvent(const HIPEvent &) = delete;
+        HIPEvent &operator=(const HIPEvent &) = delete;
+
+        // Enable move
+        HIPEvent(HIPEvent &&other) noexcept : event(other.event), valid(other.valid)
+        {
+            other.valid = false;
+        }
+
+        hipEvent_t get() const { return event; }
+        bool is_valid() const { return valid; }
+
+        void record(hipStream_t stream = 0)
+        {
+            if (valid)
+            {
+                HIP_ERRCHK(hipEventRecord(event, stream));
+            }
+        }
+
+        void synchronize()
+        {
+            if (valid)
+            {
+                HIP_ERRCHK(hipEventSynchronize(event));
+            }
+        }
+
+        static float elapsed_time(const HIPEvent &start, const HIPEvent &end)
+        {
+            float ms = 0.0f;
+            if (start.is_valid() && end.is_valid())
+            {
+                HIP_ERRCHK(hipEventElapsedTime(&ms, start.get(), end.get()));
+            }
+            return ms;
+        }
+    };
 
     enum class FILTER_TYPE
     {
@@ -114,9 +197,20 @@ namespace imgfx::core
         int height,
         int channels);
 
+    // Single image processing with optional timing
+    hipError_t apply_filter_gpu(
+        FILTER_TYPE filter_type,
+        image_t &input_image,
+        image_t &output_image,
+        bool enable_timing = false,
+        GPUTimings *timings = nullptr);
+
+    // Batch processing for multiple images (with optional timing)
     hipError_t apply_filter_gpu(
         FILTER_TYPE filter_type,
         std::vector<image_t> &input_images,
-        std::vector<image_t> &output_images);
+        std::vector<image_t> &output_images,
+        bool enable_timing = false,
+        GPUTimings *timings = nullptr);
 
 }

@@ -4,11 +4,74 @@ namespace imgfx::app
 {
     namespace fs = std::filesystem;
 
+    int process_one_gpu(
+        bool running_as_batch,
+        const std::string &input_path,
+        const std::string &output_path,
+        imgfx::core::FILTER_TYPE filter_type)
+    {
+        imgfx::core::image_t image = imgfx::core::load_image(input_path.c_str());
+        if (image.data == nullptr)
+        {
+            fprintf(stderr, "ERROR: Failed to load input image: %s\n", input_path.c_str());
+            return -1;
+        }
+
+        imgfx::core::image_t output_image;
+        output_image.width = image.width;
+        output_image.height = image.height;
+        output_image.channels = image.channels;
+
+        const size_t image_size = size_t(image.width) * image.height * image.channels * sizeof(unsigned char);
+        output_image.data = (unsigned char *)malloc(image_size);
+        if (output_image.data == nullptr)
+        {
+            fprintf(stderr, "ERROR: Could not allocate memory for output image!\n");
+            free_image(&image);
+            return -1;
+        }
+
+        hipError_t err = apply_filter_gpu(filter_type, image, output_image, false, nullptr);
+        if (err != hipSuccess)
+        {
+            fprintf(stderr, "ERROR: Failed to apply GPU filter: %s\n", hipGetErrorString(err));
+            free_image(&image);
+            free_image(&output_image);
+            return -1;
+        }
+
+        if (!save_image(output_path.c_str(), &output_image))
+        {
+            fprintf(stderr, "ERROR: Could not save output image: %s\n", output_path.c_str());
+            free_image(&image);
+            free_image(&output_image);
+            return -1;
+        }
+
+        if (!running_as_batch)
+        {
+            printf("Successfully saved output image: %s\n", output_path.c_str());
+            printf("------------------------------------------------------------\n");
+        }
+
+        free_image(&image);
+        free_image(&output_image);
+        return 0;
+    }
+
     int process_batch_gpu(const std::vector<std::string> &input_files,
                           const std::string &output_path,
-                          imgfx::core::FILTER_TYPE filter_type)
+                          imgfx::core::FILTER_TYPE filter_type,
+                          int batch_size)
     {
+        if (batch_size <= 0)
+        {
+            fprintf(stderr, "ERROR: batch_size must be a positive integer. Got: %d\n", batch_size);
+            return -1;
+        }
+
         printf("num threads: %d\n", omp_get_max_threads());
+        printf("GPU batch size: %d\n", batch_size);
 
         std::vector<imgfx::core::image_t> input_images(input_files.size());
         std::vector<imgfx::core::image_t> output_images(input_files.size());
@@ -51,14 +114,13 @@ namespace imgfx::app
         // Launch GPU kernel in chunks
         size_t total_images = input_images.size();
 
-        for (size_t offset = 0; offset < total_images; offset += GPU_CHUNK_SIZE)
+        for (size_t offset = 0; offset < total_images; offset += batch_size)
         {
-            size_t current_chunk = std::min(static_cast<size_t>(GPU_CHUNK_SIZE), total_images - offset);
+            size_t current_chunk = std::min(static_cast<size_t>(batch_size), total_images - offset);
             std::vector<imgfx::core::image_t> input_chunk(input_images.begin() + offset, input_images.begin() + offset + current_chunk);
             std::vector<imgfx::core::image_t> output_chunk(output_images.begin() + offset, output_images.begin() + offset + current_chunk);
 
-            printf("Launching GPU filter kernel: %s (images %zu to %zu)\n",
-                   filter_type_to_string(filter_type).c_str(), offset, offset + current_chunk - 1);
+            // printf("Launching GPU filter kernel: %s (batched)\n", filter_type_to_string(filter_type).c_str());
 
             hipError_t err = apply_filter_gpu(filter_type, input_chunk, output_chunk);
             if (err != hipSuccess)

@@ -8,25 +8,22 @@ namespace imgfx::filters
         const imgfx::core::image_meta_t *metas,
         int num_images)
     {
-        int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-        // Determine which image this pixel belongs to
-        int img_idx = 0;
-        while (img_idx < num_images &&
-               idx >= metas[img_idx].offset + metas[img_idx].width * metas[img_idx].height * metas[img_idx].channels)
-        {
-            img_idx++;
-        }
-
+        const int img_idx = (int)blockIdx.y;
         if (img_idx >= num_images)
         {
             return;
         }
 
-        const imgfx::core::image_meta_t &meta = metas[img_idx];
-        int pixel_idx = idx - meta.offset;
+        const imgfx::core::image_meta_t meta = metas[img_idx];
+        const size_t idx_in_image = (size_t)blockIdx.x * (size_t)blockDim.x + (size_t)threadIdx.x;
+        const size_t total_bytes = (size_t)meta.width * (size_t)meta.height * (size_t)meta.channels;
+        if (idx_in_image >= total_bytes)
+        {
+            return;
+        }
 
-        output[meta.offset + pixel_idx] = 255 - input[meta.offset + pixel_idx];
+        const size_t global_idx = (size_t)meta.offset + idx_in_image;
+        output[global_idx] = 255 - input[global_idx];
     }
 
     void negative_cpu(

@@ -56,7 +56,7 @@ int main(int argc, char **argv)
         }
         else
         {
-            success = (app::process_batch_gpu(files, output_path.string(), args.filter_type) == 0);
+            success = (app::process_batch_gpu(files, output_path.string(), args.filter_type, args.batch_size) == 0);
         }
 
         if (!success)
@@ -67,7 +67,11 @@ int main(int argc, char **argv)
     }
     else
     {
-        if (app::process_one_cpu(false, files[0], output_path.string(), args.filter_type) != 0)
+        const bool running_as_batch = false;
+        const int rc = use_cpu
+                           ? app::process_one_cpu(running_as_batch, files[0], output_path.string(), args.filter_type)
+                           : app::process_one_gpu(running_as_batch, files[0], output_path.string(), args.filter_type);
+        if (rc != 0)
         {
             fprintf(stderr, "Failed to process file: %s\n", files[0].c_str());
             ret_code = 1;

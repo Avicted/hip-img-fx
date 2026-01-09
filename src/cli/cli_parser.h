@@ -15,6 +15,7 @@ namespace imgfx::cli
         const char *output_file;
         imgfx::core::FILTER_TYPE filter_type;
         bool use_cpu;
+        int batch_size;
     } cli_args_t;
 
     void print_help();

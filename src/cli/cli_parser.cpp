@@ -10,6 +10,7 @@ namespace imgfx::cli
         printf("  --output <output_file|output_dir>  Specifies the output file or directory path.\n");
         printf("  --filter <filter_type>             Specifies the type of filter to apply (e.g., \"grayscale\", \"negative\", \"gaussian-blur\").\n");
         printf("  --use-cpu                          Use CPU for processing instead of GPU.\n");
+        printf("  --batch-size <N>                   Number of images to process per GPU batch (default: 64).\n");
         printf("  --help                             Displays this help information.\n");
         printf("\n");
         printf("Notes:\n");
@@ -25,6 +26,7 @@ namespace imgfx::cli
             .output_file = nullptr,
             .filter_type = imgfx::core::FILTER_TYPE::UNDEFINED,
             .use_cpu = false,
+            .batch_size = 64, // default
         };
 
         for (int i = 1; i < argc; i++)
@@ -61,6 +63,16 @@ namespace imgfx::cli
             else if (strcmp(argv[i], "--use-cpu") == 0)
             {
                 args.use_cpu = true;
+            }
+            else if (strcmp(argv[i], "--batch-size") == 0 && i + 1 < argc)
+            {
+                args.batch_size = atoi(argv[++i]);
+                if (args.batch_size <= 0)
+                {
+                    printf("Error: --batch-size must be a positive integer.\n");
+                    print_help();
+                    exit(1);
+                }
             }
             else if (strcmp(argv[i], "--help") == 0)
             {
@@ -123,6 +135,7 @@ namespace imgfx::cli
         printf("Input: %s\n", args.input_file);
         printf("Output: %s\n", args.output_file);
         printf("Filter Type: %s\n", filter_type_to_string(args.filter_type).c_str());
+        printf("Batch Size: %d\n", args.batch_size);
 
         return args;
     }

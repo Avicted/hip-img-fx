@@ -8,9 +8,11 @@
             "program": "${workspaceFolder}/build/hip-img-fx",
             "args": [
                 "--input",
-                "examples/example_01.jpg",
+                "/home/avic/Pictures/train/",
+                // "examples/example_01.jpg",
                 "--output",
-                "examples/output_example_01.jpg",
+                "/home/avic/Pictures/train_output",
+                // "examples/output_example_01.jpg",
                 "--filter",
                 "grayscale",
                 // "--batch-size",

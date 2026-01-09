@@ -1,4 +1,5 @@
 build/
+
 findings/
 
 examples/output/
@@ -6,3 +7,5 @@ examples/output/
 examples/*
 
 bench/scripts/hip_img_fx_venv/
+
+.autotune_cache*

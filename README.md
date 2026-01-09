@@ -12,7 +12,7 @@ This project showcases production-grade GPU optimization through empirical measu
 
 **Architecture**: Configurable batch processing with synchronous execution pipeline
 
-**Full Results**: See [BENCHMARK_RESULTS.md](BENCHMARK_RESULTS.md) for comprehensive performance analysis
+**Full Results**: See [Benchmark Results](docs/BENCHMARK_RESULTS.md) for comprehensive performance analysis
 
 ## Performance Engineering Focus
 
@@ -56,7 +56,7 @@ The batch processing architecture was validated through extensive benchmarking a
 - **Memory-Bound Limitations**: Simple filters (grayscale, negative) show 0.6-3.7× speedup vs OpenMP
 - **Transfer Overhead**: Averages 71% of total GPU time across all configurations
 - **Resolution Scaling**: Larger images (4096×4096) benefit more from GPU acceleration
-- **Batch Size Impact**: Minimal for compute-bound filters, significant for memory-bound (see [BENCHMARK_RESULTS.md](BENCHMARK_RESULTS.md))
+- **Batch Size Impact**: Minimal for compute-bound filters, significant for memory-bound (see [Benchmark Results](docs/BENCHMARK_RESULTS.md))
 
 
 ## Quick Start
@@ -215,7 +215,7 @@ Bandwidth:         21.92 GB/s
 Transfer Overhead: 92% of GPU time (memory-bound)
 ```
 
-**See [BENCHMARK_RESULTS.md](BENCHMARK_RESULTS.md) for complete analysis (36 configurations, batch size impact analysis)**
+**See [Benchmark Results](docs/BENCHMARK_RESULTS.md) for complete analysis (36 configurations, batch size impact analysis)**
 
 ### Visualizations
 
@@ -258,7 +258,7 @@ process_batch_gpu(images, filter, batch_size);
 // Memory layout: [img0][img1][img2]...[imgN]
 ```
 
-**Key Finding**: Through empirical testing across 36 configurations, batch processing provides optimal throughput. Batch size impact varies by filter type (see [BENCHMARK_RESULTS.md](BENCHMARK_RESULTS.md)).
+**Key Finding**: Through empirical testing across 36 configurations, batch processing provides optimal throughput. Batch size impact varies by filter type (see [Benchmark Results](docs/BENCHMARK_RESULTS.md)).
 
 ### 3. Memory Access Optimization
 

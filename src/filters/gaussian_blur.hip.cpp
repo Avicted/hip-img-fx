@@ -16,7 +16,10 @@ namespace imgfx::filters
         }
 
         const imgfx::core::image_meta_t meta = metas[img_idx];
-        const size_t idx_in_image = (size_t)blockIdx.x * (size_t)blockDim.x + (size_t)threadIdx.x;
+        // Support both 1D and 2D block configurations
+        const size_t threads_per_block = (size_t)blockDim.x * (size_t)blockDim.y;
+        const size_t thread_idx_in_block = (size_t)threadIdx.y * (size_t)blockDim.x + (size_t)threadIdx.x;
+        const size_t idx_in_image = (size_t)blockIdx.x * threads_per_block + thread_idx_in_block;
         const size_t total_bytes = (size_t)meta.width * (size_t)meta.height * (size_t)meta.channels;
         if (idx_in_image >= total_bytes)
         {
@@ -34,8 +37,8 @@ namespace imgfx::filters
         extern __shared__ float kernel[];
         int radius = blurAmount / 2;
 
-        // compute Gaussian kernel once per block
-        if (threadIdx.x == 0)
+        // compute Gaussian kernel once per block (only thread 0,0 in 2D blocks)
+        if (threadIdx.x == 0 && threadIdx.y == 0)
         {
             float sigma = blurAmount / 2.0f;
             float sum = 0.0f;

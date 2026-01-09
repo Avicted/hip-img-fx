@@ -1,7 +1,24 @@
 #include "gpu_utils.h"
+#include "autotuning.h"
 
 namespace imgfx::core
 {
+    // Global autotuner instance (initialized on first use)
+    AutoTuner &get_autotuner()
+    {
+        static AutoTuner instance;
+        static bool initialized = false;
+
+        if (!initialized)
+        {
+            // Try to load cache on first use
+            instance.load_cache();
+            initialized = true;
+        }
+
+        return instance;
+    }
+
     int get_hip_devices(void) noexcept
     {
         int deviceCount = 0;
@@ -190,20 +207,28 @@ namespace imgfx::core
         {
         case FILTER_TYPE::GRAYSCALE:
         {
-            hipLaunchKernelGGL(imgfx::filters::grayscale_kernel, grid, dim3(threads), 0, 0,
-                               (unsigned char *)d_input.ptr,
-                               (unsigned char *)d_output.ptr,
-                               (image_meta_t *)d_metas.ptr,
-                               (int)input_images.size());
+            // Use autotuned grayscale kernel
+            imgfx::filters::apply_grayscale_autotuned(
+                (unsigned char *)d_input.ptr,
+                (unsigned char *)d_output.ptr,
+                (image_meta_t *)d_metas.ptr,
+                (int)input_images.size(),
+                max_image_bytes,
+                get_autotuner(),
+                0); // default stream
             break;
         }
         case FILTER_TYPE::NEGATIVE:
         {
-            hipLaunchKernelGGL(imgfx::filters::negative_kernel, grid, dim3(threads), 0, 0,
-                               (unsigned char *)d_input.ptr,
-                               (unsigned char *)d_output.ptr,
-                               (image_meta_t *)d_metas.ptr,
-                               (int)input_images.size());
+            // Use autotuned negative kernel
+            imgfx::filters::apply_negative_autotuned(
+                (unsigned char *)d_input.ptr,
+                (unsigned char *)d_output.ptr,
+                (image_meta_t *)d_metas.ptr,
+                (int)input_images.size(),
+                max_image_bytes,
+                get_autotuner(),
+                0); // default stream
             break;
         }
         case FILTER_TYPE::GAUSSIAN_BLUR:
@@ -214,19 +239,16 @@ namespace imgfx::core
                 return hipErrorInvalidValue;
             }
 
-            size_t shared_bytes = sizeof(float) * GAUSSIAN_BLUR_AMOUNT * GAUSSIAN_BLUR_AMOUNT;
-
-            hipLaunchKernelGGL(
-                imgfx::filters::gaussian_blur_kernel,
-                grid,
-                dim3(threads),
-                shared_bytes,
-                0,
+            // Use autotuned gaussian_blur kernel
+            imgfx::filters::apply_gaussian_blur_autotuned(
                 (unsigned char *)d_input.ptr,
                 (unsigned char *)d_output.ptr,
                 (image_meta_t *)d_metas.ptr,
                 (int)input_images.size(),
-                GAUSSIAN_BLUR_AMOUNT);
+                max_image_bytes,
+                GAUSSIAN_BLUR_AMOUNT,
+                get_autotuner(),
+                0); // default stream
             break;
         }
         default:

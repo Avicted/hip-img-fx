@@ -22,13 +22,18 @@ app_src = files(
   'src/app/process.cpp',
   'src/cli/cli_parser.cpp',
   'src/core/gpu_utils.cpp',
+  'src/core/autotuning.cpp',
   'src/core/image.cpp',
   'src/filters/grayscale.hip.cpp',
+  'src/filters/grayscale_autotune.hip.cpp',
   'src/filters/negative.hip.cpp',
+  'src/filters/negative_autotune.hip.cpp',
   'src/filters/gaussian_blur.hip.cpp',
+  'src/filters/gaussian_blur_autotune.hip.cpp',
 )
 
-gpu_arch = '--offload-arch=gfx1030'
+# RX 6900 XT; change as needed
+gpu_arch = '--offload-arch=gfx1030' 
 
 inc_src = include_directories('.')
 inc_sys = include_directories(['vendor', '/opt/rocm/include'], is_system: true)
@@ -42,14 +47,17 @@ executable(
   install: true,
 )
 
-# Benchmark executable
 bench_src = files(
   'bench/run_bench.cpp',
   'src/core/gpu_utils.cpp',
+  'src/core/autotuning.cpp',
   'src/core/image.cpp',
   'src/filters/grayscale.hip.cpp',
+  'src/filters/grayscale_autotune.hip.cpp',
   'src/filters/negative.hip.cpp',
+  'src/filters/negative_autotune.hip.cpp',
   'src/filters/gaussian_blur.hip.cpp',
+  'src/filters/gaussian_blur_autotune.hip.cpp',
 )
 
 executable(

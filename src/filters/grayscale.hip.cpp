@@ -15,7 +15,10 @@ namespace imgfx::filters
         }
 
         const imgfx::core::image_meta_t meta = metas[img_idx];
-        const size_t idx_in_image = (size_t)blockIdx.x * (size_t)blockDim.x + (size_t)threadIdx.x;
+        // Support both 1D and 2D block configurations
+        const size_t threads_per_block = (size_t)blockDim.x * (size_t)blockDim.y;
+        const size_t thread_idx_in_block = (size_t)threadIdx.y * (size_t)blockDim.x + (size_t)threadIdx.x;
+        const size_t idx_in_image = (size_t)blockIdx.x * threads_per_block + thread_idx_in_block;
         const size_t image_bytes = (size_t)meta.width * (size_t)meta.height * (size_t)meta.channels;
         if (idx_in_image >= image_bytes)
         {

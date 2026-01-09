@@ -1,0 +1,29 @@
+{
+  "version": "2.0",
+  "entries": [
+    {
+      "gpu_arch": "gfx1030",
+      "kernel_name": "grayscale_v2",
+      "context": "large",
+      "config": "block_x=16,block_y=8",
+      "benchmark_time_ms": 0,
+      "timestamp": ""
+    },
+    {
+      "gpu_arch": "gfx1030",
+      "kernel_name": "grayscale_v2",
+      "context": "medium",
+      "config": "block_x=16,block_y=4",
+      "benchmark_time_ms": 0,
+      "timestamp": ""
+    },
+    {
+      "gpu_arch": "gfx1030",
+      "kernel_name": "grayscale_v2",
+      "context": "small",
+      "config": "block_x=32,block_y=4",
+      "benchmark_time_ms": 0,
+      "timestamp": ""
+    }
+  ]
+}

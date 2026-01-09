@@ -24,8 +24,11 @@ app_src = files(
   'src/core/gpu_utils.cpp',
   'src/core/autotuning.cpp',
   'src/core/image.cpp',
+  'src/core/autotune/tuning_config.cpp',
+  'src/core/autotune/cache_store.cpp',
   'src/filters/grayscale.hip.cpp',
   'src/filters/grayscale_autotune.hip.cpp',
+  'src/filters/grayscale_autotune_v2.hip.cpp',
   'src/filters/negative.hip.cpp',
   'src/filters/negative_autotune.hip.cpp',
   'src/filters/gaussian_blur.hip.cpp',
@@ -52,8 +55,11 @@ bench_src = files(
   'src/core/gpu_utils.cpp',
   'src/core/autotuning.cpp',
   'src/core/image.cpp',
+  'src/core/autotune/tuning_config.cpp',
+  'src/core/autotune/cache_store.cpp',
   'src/filters/grayscale.hip.cpp',
   'src/filters/grayscale_autotune.hip.cpp',
+  'src/filters/grayscale_autotune_v2.hip.cpp',
   'src/filters/negative.hip.cpp',
   'src/filters/negative_autotune.hip.cpp',
   'src/filters/gaussian_blur.hip.cpp',
@@ -63,6 +69,71 @@ bench_src = files(
 executable(
   'hip-img-fx-bench',
   bench_src,
+  cpp_args: app_warning_args + ['-fopenmp', '-march=native', '-ffast-math', gpu_arch],
+  link_args: ['-fopenmp', '-march=native', '-ffast-math', gpu_arch],
+  include_directories: [inc_src, inc_sys],
+  install: false,
+)
+
+# Validation test for grayscale migration
+validate_src = files(
+  'bench/validate_grayscale_migration.cpp',
+  'src/core/gpu_utils.cpp',
+  'src/core/autotuning.cpp',
+  'src/core/autotune/tuning_config.cpp',
+  'src/core/autotune/cache_store.cpp',
+  'src/filters/grayscale.hip.cpp',
+  'src/filters/grayscale_autotune.hip.cpp',
+  'src/filters/grayscale_autotune_v2.hip.cpp',
+)
+
+executable(
+  'validate-grayscale-migration',
+  validate_src,
+  cpp_args: app_warning_args + ['-fopenmp', '-march=native', '-ffast-math', gpu_arch],
+  link_args: ['-fopenmp', '-march=native', '-ffast-math', gpu_arch],
+  include_directories: [inc_src, inc_sys],
+  install: false,
+)
+
+# Performance benchmark for grayscale migration
+benchmark_migration_src = files(
+  'bench/benchmark_grayscale_migration.cpp',
+  'src/core/gpu_utils.cpp',
+  'src/core/autotuning.cpp',
+  'src/core/autotune/tuning_config.cpp',
+  'src/core/autotune/cache_store.cpp',
+  'src/filters/grayscale.hip.cpp',
+  'src/filters/grayscale_autotune.hip.cpp',
+  'src/filters/grayscale_autotune_v2.hip.cpp',
+)
+
+executable(
+  'benchmark-grayscale-migration',
+  benchmark_migration_src,
+  cpp_args: app_warning_args + ['-fopenmp', '-march=native', '-ffast-math', gpu_arch],
+  link_args: ['-fopenmp', '-march=native', '-ffast-math', gpu_arch],
+  include_directories: [inc_src, inc_sys],
+  install: false,
+)
+
+# Tier-1 improvements integration test
+tier1_test_src = files(
+  'bench/test_tier1_improvements.cpp',
+  'src/core/gpu_utils.cpp',
+  'src/core/autotuning.cpp',
+  'src/core/autotune/tuning_config.cpp',
+  'src/core/autotune/cache_store.cpp',
+  'src/filters/grayscale.hip.cpp',
+  'src/filters/grayscale_autotune.hip.cpp',
+  'src/filters/grayscale_autotune_v2.hip.cpp',
+  'src/filters/negative.hip.cpp',
+  'src/filters/negative_autotune.hip.cpp',
+)
+
+executable(
+  'test-tier1-improvements',
+  tier1_test_src,
   cpp_args: app_warning_args + ['-fopenmp', '-march=native', '-ffast-math', gpu_arch],
   link_args: ['-fopenmp', '-march=native', '-ffast-math', gpu_arch],
   include_directories: [inc_src, inc_sys],

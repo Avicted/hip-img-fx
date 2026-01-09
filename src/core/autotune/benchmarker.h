@@ -118,6 +118,21 @@ namespace imgfx::core::autotune
             float min_t = *std::min_element(times.begin(), times.end());
             float max_t = *std::max_element(times.begin(), times.end());
 
+            // Sanity checks on timing results
+            constexpr float MAX_REASONABLE_TIME_MS = 10000.0f; // 10 seconds
+            if (avg <= 0.0f || avg > MAX_REASONABLE_TIME_MS)
+            {
+                fprintf(stderr, "[AutoTune] Warning: Suspicious timing %.4f ms (rejected)\n", avg);
+                return BenchmarkResult{}; // Invalid
+            }
+
+            // Warn on high variance (suggests measurement instability)
+            if (stddev > avg * 0.5f)
+            {
+                fprintf(stderr, "[AutoTune] Warning: High timing variance (%.1f%%), results may be unreliable\n",
+                        (stddev / avg) * 100.0f);
+            }
+
             return BenchmarkResult(config, avg, stddev, min_t, max_t);
         }
 

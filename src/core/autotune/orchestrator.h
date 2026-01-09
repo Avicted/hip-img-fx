@@ -112,6 +112,9 @@ namespace imgfx::core::autotune
             const Context &ctx,
             const TuningOptions &options = TuningOptions::defaults())
         {
+            // Validate options
+            AUTOTUNE_ASSERT(options.validate(), "Invalid TuningOptions provided");
+
             // Fast path: thread-local cache (~5ns overhead)
             thread_local static std::unordered_map<std::string, TuningConfig> fast_cache;
             std::string fast_key = std::string(KernelTraits::name()) + ":" + ctx.cache_key();
@@ -121,7 +124,20 @@ namespace imgfx::core::autotune
                 auto fast_it = fast_cache.find(fast_key);
                 if (fast_it != fast_cache.end())
                 {
-                    return fast_it->second;
+                    // Validate cached config is still valid
+                    if (KernelTraits::is_valid_config(fast_it->second, args))
+                    {
+                        return fast_it->second;
+                    }
+                    else
+                    {
+                        // Cached config became invalid - remove and retune
+                        if (options.verbose)
+                        {
+                            fprintf(stderr, "[AutoTune] Warning: Thread-local cached config invalid, retuning...\n");
+                        }
+                        fast_cache.erase(fast_it);
+                    }
                 }
             }
 
@@ -132,8 +148,23 @@ namespace imgfx::core::autotune
             {
                 if (auto cached = cache_.lookup(key))
                 {
-                    fast_cache[fast_key] = *cached;
-                    return *cached;
+                    // Validate cached config before use (INV-1: cached configs must be valid)
+                    if (KernelTraits::is_valid_config(*cached, args))
+                    {
+                        fast_cache[fast_key] = *cached;
+                        return *cached;
+                    }
+                    else
+                    {
+                        // Cache poisoned - invalidate and retune
+                        if (options.verbose)
+                        {
+                            fprintf(stderr, "[AutoTune] Warning: Cached config [%dx%d] invalid, retuning...\n",
+                                    cached->block_x(), cached->block_y());
+                        }
+                        cache_.remove_if([&key](const CacheEntry &e)
+                                         { return e.key == key; });
+                    }
                 }
             }
 
@@ -227,6 +258,17 @@ namespace imgfx::core::autotune
             // Generate candidate configurations
             std::vector<TuningConfig> candidates = KernelTraits::generate_candidates();
 
+            // INV-2: Candidate list must not be empty
+            if (candidates.empty())
+            {
+                fprintf(stderr, "[AutoTune ERROR] generate_candidates() returned empty list\n");
+                fprintf(stderr, "  Kernel: %s\n", KernelTraits::name());
+                fprintf(stderr, "  This is a bug in the kernel traits implementation.\n");
+                HIP_ERRCHK(hipStreamDestroy(stream));
+                AUTOTUNE_ASSERT(false, "Empty candidate list - invariant violation (INV-2)");
+                return TuningConfig{}; // Unreachable in debug, fallback in release
+            }
+
             // Filter invalid candidates
             std::vector<TuningConfig> valid_candidates;
             for (const auto &config : candidates)
@@ -239,9 +281,16 @@ namespace imgfx::core::autotune
 
             if (valid_candidates.empty())
             {
-                fprintf(stderr, "[AutoTuner] Warning: No valid candidate configurations\n");
+                fprintf(stderr, "[AutoTune ERROR] All %zu candidates failed validation\n",
+                        candidates.size());
+                fprintf(stderr, "  Kernel: %s\n", KernelTraits::name());
+                fprintf(stderr, "  Possible causes:\n");
+                fprintf(stderr, "    1. is_valid_config() too strict\n");
+                fprintf(stderr, "    2. generate_candidates() produces invalid configs\n");
+                fprintf(stderr, "    3. Hardware constraints not met\n");
                 HIP_ERRCHK(hipStreamDestroy(stream));
-                return TuningConfig{}; // Return default config
+                AUTOTUNE_ASSERT(false, "No valid candidates - check trait implementation");
+                return TuningConfig{}; // Unreachable in debug, fallback in release
             }
 
             // Benchmark all valid candidates
@@ -253,12 +302,20 @@ namespace imgfx::core::autotune
 
             if (results.empty())
             {
-                fprintf(stderr, "[AutoTuner] Warning: No valid benchmark results\n");
-                return TuningConfig{};
+                fprintf(stderr, "[AutoTune ERROR] All benchmark attempts failed\n");
+                fprintf(stderr, "  Kernel: %s\n", KernelTraits::name());
+                fprintf(stderr, "  Tested %zu candidates, all failed\n", valid_candidates.size());
+                fprintf(stderr, "  Check HIP runtime errors above.\n");
+                AUTOTUNE_ASSERT(false, "All benchmarks failed - runtime error likely");
+                return TuningConfig{}; // Unreachable in debug, fallback in release
             }
 
             // Select fastest configuration
             auto best = std::min_element(results.begin(), results.end());
+
+            // INV-1: Best config must pass validation
+            AUTOTUNE_ASSERT(KernelTraits::is_valid_config(best->config, args),
+                            "Best config failed validation - invariant violation (INV-1)");
 
             if (options.verbose)
             {

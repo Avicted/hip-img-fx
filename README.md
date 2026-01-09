@@ -133,7 +133,6 @@ Notes:
 ./build/hip-img-fx --input images/ --filter negative --output results/ --batch-size 1
 ```
 
-
 ## Benchmark Suite
 
 ### Running Benchmarks

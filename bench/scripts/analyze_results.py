@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
-"""
-Analysis of HIP image-processing benchmarks.
+"""Analysis of HIP image-processing benchmarks.
 
-Simplified architecture:
-- Single-image processing only (no batching)
-- Synchronous execution only (no async streams)
-- Focus on per-filter and per-resolution performance characteristics
+This script analyzes CSV output produced by the benchmark harness in
+`bench/run_bench.cpp`.
+
+Current benchmark sweep (as configured in the harness):
+- Resolutions: 512, 1024, 2048, 4096
+- Filters: grayscale, negative, gaussian_blur
+- Batch sizes: 1, 32, 64
+
+Notes:
+- The main application supports directory batching via `--batch-size`.
+- The benchmark harness records a `batch_size` column; interpretation depends on
+    the harness implementation used to generate the CSV.
 """
 
 import sys
@@ -25,13 +32,27 @@ plt.rcParams.update({
 })
 
 
+def _fmt_int_list(values) -> str:
+    return ", ".join(str(int(v)) for v in values)
+
+
+def _save_figure(fig, outdir: Path, stem: str):
+    """Save each figure as both PNG (for quick viewing) and SVG (for inspection/zoom)."""
+    png_path = outdir / f"{stem}.png"
+    svg_path = outdir / f"{stem}.svg"
+    fig.savefig(png_path, dpi=150, bbox_inches="tight")
+    fig.savefig(svg_path, format="svg", bbox_inches="tight")
+    print(f"Generated: {png_path.name}")
+    print(f"Generated: {svg_path.name}")
+
+
 # -------------------------
 # Loading
 # -------------------------
 def load_csv(path: Path) -> pd.DataFrame:
     df = pd.read_csv(path)
     required = {
-        "filter", "resolution",
+        "filter", "resolution", "batch_size",
         "gpu_total_ms", "gpu_kernel_ms",
         "gpu_h2d_ms", "gpu_d2h_ms",
         "speedup_vs_single", "speedup_vs_omp",
@@ -49,18 +70,19 @@ def load_csv(path: Path) -> pd.DataFrame:
 # -------------------------
 def print_summary(df: pd.DataFrame):
     print("=" * 80)
-    print("HIP Image FX – Single-Image Performance Summary")
+    print("HIP Image FX – Batch Processing Performance Summary")
     print("=" * 80)
 
     # Define fixed column widths for perfect alignment
     w_res = 12
+    w_batch = 8
     w_total = 12
     w_kernel = 12
     w_transfer = 12
     w_omp = 18
     w_single = 18
 
-    header = (f"  {'Resolution':<{w_res}} {'GPU Total':>{w_total}} {'Kernel':>{w_kernel}} "
+    header = (f"  {'Resolution':<{w_res}} {'Batch':<{w_batch}} {'GPU Total':>{w_total}} {'Kernel':>{w_kernel}} "
               f"{'Transfer %':>{w_transfer}} {'Speedup vs OMP':>{w_omp}} {'Speedup vs Single':>{w_single}}")
     sep = '-' * len(header)
 
@@ -72,37 +94,45 @@ def print_summary(df: pd.DataFrame):
         print(sep)
 
         for res in sorted(fdf["resolution"].unique()):
-            row = fdf[fdf["resolution"] == res].iloc[0]
+            for batch_size in sorted(fdf["batch_size"].unique()):
+                rdf = fdf[(fdf["resolution"] == res) & (fdf["batch_size"] == batch_size)]
+                if rdf.empty:
+                    continue
+                row = rdf.iloc[0]
 
-            transfer_pct = (
-                (row["gpu_h2d_ms"] + row["gpu_d2h_ms"]) / row["gpu_total_ms"] * 100
-            )
+                transfer_pct = (
+                    (row["gpu_h2d_ms"] + row["gpu_d2h_ms"]) / row["gpu_total_ms"] * 100
+                )
 
-            res_str = f"{res}×{res}"
-            gpu_total_str = f"{row['gpu_total_ms']:.2f} ms"
-            kernel_str = f"{row['gpu_kernel_ms']:.2f} ms"
-            transfer_str = f"{transfer_pct:.1f}%"
-            speedup_omp_str = f"{row['speedup_vs_omp']:.2f}×"
-            speedup_single_str = f"{row['speedup_vs_single']:.2f}×"
+                res_str = f"{res}×{res}"
+                batch_str = f"{batch_size}"
+                gpu_total_str = f"{row['gpu_total_ms']:.2f} ms"
+                kernel_str = f"{row['gpu_kernel_ms']:.2f} ms"
+                transfer_str = f"{transfer_pct:.1f}%"
+                speedup_omp_str = f"{row['speedup_vs_omp']:.2f}×"
+                speedup_single_str = f"{row['speedup_vs_single']:.2f}×"
 
-            print(
-                f"  {res_str:<{w_res}} {gpu_total_str:>{w_total}} {kernel_str:>{w_kernel}} "
-                f"{transfer_str:>{w_transfer}} {speedup_omp_str:>{w_omp}} {speedup_single_str:>{w_single}}"
-            )
+                print(
+                    f"  {res_str:<{w_res}} {batch_str:<{w_batch}} {gpu_total_str:>{w_total}} {kernel_str:>{w_kernel}} "
+                    f"{transfer_str:>{w_transfer}} {speedup_omp_str:>{w_omp}} {speedup_single_str:>{w_single}}"
+                )
 
 
 # -------------------------
 # Plot 1: Speedup vs Resolution (Both Single and OpenMP)
 # -------------------------
 def plot_speedup_vs_resolution(df, outdir):
-    """Plot GPU speedup vs both single-threaded and OpenMP CPU for each filter."""
+    """Plot GPU speedup vs both single-threaded and OpenMP CPU for each filter (best batch size only)."""
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
     
     colors = {"grayscale": "#1e88e5", "negative": "#fb8c00", "gaussian_blur": "#43a047"}
     
+    # For each filter and resolution, select the best batch size (highest speedup)
+    df_best = df.loc[df.groupby(['filter', 'resolution'])['speedup_vs_omp'].idxmax()]
+    
     # Speedup vs Single-threaded (Linear)
-    for flt in sorted(df["filter"].unique()):
-        fdf = df[df["filter"] == flt].sort_values("resolution")
+    for flt in sorted(df_best["filter"].unique()):
+        fdf = df_best[df_best["filter"] == flt].sort_values("resolution")
         ax1.plot(
             fdf["resolution"],
             fdf["speedup_vs_single"],
@@ -115,13 +145,13 @@ def plot_speedup_vs_resolution(df, outdir):
     ax1.axhline(1.0, color="red", linestyle="--", alpha=0.7, linewidth=1.5, label="CPU Parity")
     ax1.set_xlabel("Resolution (pixels per side)", fontsize=12)
     ax1.set_ylabel("Speedup vs Single-threaded CPU", fontsize=12)
-    ax1.set_title("GPU Speedup vs Single-threaded CPU (Linear)", fontsize=14, fontweight="bold")
+    ax1.set_title("GPU Speedup vs Single-threaded CPU (Linear, Best Batch Size)", fontsize=14, fontweight="bold")
     ax1.legend(fontsize=10)
     ax1.grid(True, alpha=0.3)
     
     # Speedup vs Single-threaded (Log)
-    for flt in sorted(df["filter"].unique()):
-        fdf = df[df["filter"] == flt].sort_values("resolution")
+    for flt in sorted(df_best["filter"].unique()):
+        fdf = df_best[df_best["filter"] == flt].sort_values("resolution")
         ax2.plot(
             fdf["resolution"],
             fdf["speedup_vs_single"],
@@ -135,13 +165,13 @@ def plot_speedup_vs_resolution(df, outdir):
     ax2.set_xlabel("Resolution (pixels per side)", fontsize=12)
     ax2.set_ylabel("Speedup vs Single-threaded CPU (log)", fontsize=12)
     ax2.set_yscale("log")
-    ax2.set_title("GPU Speedup vs Single-threaded CPU (Log)", fontsize=14, fontweight="bold")
+    ax2.set_title("GPU Speedup vs Single-threaded CPU (Log, Best Batch Size)", fontsize=14, fontweight="bold")
     ax2.legend(fontsize=10)
     ax2.grid(True, alpha=0.3, which="both")
     
     # Speedup vs OpenMP (Linear)
-    for flt in sorted(df["filter"].unique()):
-        fdf = df[df["filter"] == flt].sort_values("resolution")
+    for flt in sorted(df_best["filter"].unique()):
+        fdf = df_best[df_best["filter"] == flt].sort_values("resolution")
         ax3.plot(
             fdf["resolution"],
             fdf["speedup_vs_omp"],
@@ -154,13 +184,13 @@ def plot_speedup_vs_resolution(df, outdir):
     ax3.axhline(1.0, color="red", linestyle="--", alpha=0.7, linewidth=1.5, label="CPU Parity")
     ax3.set_xlabel("Resolution (pixels per side)", fontsize=12)
     ax3.set_ylabel("Speedup vs OpenMP CPU (32 threads)", fontsize=12)
-    ax3.set_title("GPU Speedup vs OpenMP CPU (Linear)", fontsize=14, fontweight="bold")
+    ax3.set_title("GPU Speedup vs OpenMP CPU (Linear, Best Batch Size)", fontsize=14, fontweight="bold")
     ax3.legend(fontsize=10)
     ax3.grid(True, alpha=0.3)
     
     # Speedup vs OpenMP (Log)
-    for flt in sorted(df["filter"].unique()):
-        fdf = df[df["filter"] == flt].sort_values("resolution")
+    for flt in sorted(df_best["filter"].unique()):
+        fdf = df_best[df_best["filter"] == flt].sort_values("resolution")
         ax4.plot(
             fdf["resolution"],
             fdf["speedup_vs_omp"],
@@ -174,28 +204,34 @@ def plot_speedup_vs_resolution(df, outdir):
     ax4.set_xlabel("Resolution (pixels per side)", fontsize=12)
     ax4.set_ylabel("Speedup vs OpenMP CPU (32 threads, log)", fontsize=12)
     ax4.set_yscale("log")
-    ax4.set_title("GPU Speedup vs OpenMP CPU (Log)", fontsize=14, fontweight="bold")
+    ax4.set_title("GPU Speedup vs OpenMP CPU (Log, Best Batch Size)", fontsize=14, fontweight="bold")
     ax4.legend(fontsize=10)
     ax4.grid(True, alpha=0.3, which="both")
+
+    for ax in (ax1, ax2, ax3, ax4):
+        ax.set_xticks(sorted(df_best["resolution"].unique()))
+        ax.set_xticklabels([f"{r}²" for r in sorted(df_best["resolution"].unique())])
     
     plt.tight_layout()
-    plt.savefig(outdir / "speedup_vs_resolution.png", dpi=150, bbox_inches="tight")
-    plt.close()
-    print(f"Generated: speedup_vs_resolution.png")
+    _save_figure(fig, outdir, "speedup_vs_resolution")
+    plt.close(fig)
 
 
 # -------------------------
 # Plot 2: GPU Time Breakdown
 # -------------------------
 def plot_gpu_time_breakdown(df, outdir):
-    """Stacked bar chart showing H2D, kernel, and D2H breakdown for all configurations."""
-    fig, axes = plt.subplots(1, 3, figsize=(16, 6))
+    """Stacked bar chart showing H2D, kernel, and D2H breakdown for all configurations (best batch size)."""
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
     
-    filters = sorted(df["filter"].unique())
+    # For each filter and resolution, select the best batch size
+    df_best = df.loc[df.groupby(['filter', 'resolution'])['speedup_vs_omp'].idxmax()]
+    
+    filters = sorted(df_best["filter"].unique())
     
     for idx, flt in enumerate(filters):
         ax = axes[idx]
-        fdf = df[df["filter"] == flt].sort_values("resolution")
+        fdf = df_best[df_best["filter"] == flt].sort_values("resolution")
         
         resolutions = [f"{r}²" for r in fdf["resolution"]]
         h2d_times = fdf["gpu_h2d_ms"].values
@@ -216,22 +252,24 @@ def plot_gpu_time_breakdown(df, outdir):
     
     plt.suptitle("GPU Time Breakdown by Filter", fontsize=15, fontweight="bold", y=1.02)
     plt.tight_layout()
-    plt.savefig(outdir / "gpu_time_breakdown.png", dpi=150, bbox_inches="tight")
-    plt.close()
-    print(f"Generated: gpu_time_breakdown.png")
+    _save_figure(fig, outdir, "gpu_time_breakdown")
+    plt.close(fig)
 
 
 # -------------------------
 # Plot 3: Transfer Overhead Percentage
 # -------------------------
 def plot_transfer_overhead(df, outdir):
-    """Show transfer overhead as percentage of total GPU time."""
+    """Plot transfer overhead percentage (best batch size for each config)."""
     fig, ax = plt.subplots(figsize=(12, 7))
+    
+    # For each filter and resolution, select the best batch size
+    df_best = df.loc[df.groupby(['filter', 'resolution'])['speedup_vs_omp'].idxmax()]
     
     colors = {"grayscale": "#1e88e5", "negative": "#fb8c00", "gaussian_blur": "#43a047"}
     
-    for flt in sorted(df["filter"].unique()):
-        fdf = df[df["filter"] == flt].sort_values("resolution")
+    for flt in sorted(df_best["filter"].unique()):
+        fdf = df_best[df_best["filter"] == flt].sort_values("resolution")
         
         transfer_pct = (fdf["gpu_h2d_ms"] + fdf["gpu_d2h_ms"]) / fdf["gpu_total_ms"] * 100
         
@@ -255,24 +293,29 @@ def plot_transfer_overhead(df, outdir):
     # Add reference line at 50%
     ax.axhline(50, color="gray", linestyle=":", alpha=0.5, linewidth=1)
     ax.text(df["resolution"].min(), 52, "50% (memory-bound)", fontsize=9, color="gray")
+
+    ax.set_xticks(sorted(df_best["resolution"].unique()))
+    ax.set_xticklabels([f"{r}²" for r in sorted(df_best["resolution"].unique())])
     
     plt.tight_layout()
-    plt.savefig(outdir / "transfer_overhead.png", dpi=150, bbox_inches="tight")
-    plt.close()
-    print(f"Generated: transfer_overhead.png")
+    _save_figure(fig, outdir, "transfer_overhead")
+    plt.close(fig)
 
 
 # -------------------------
 # Plot 4: Effective Bandwidth
 # -------------------------
 def plot_bandwidth(df, outdir):
-    """Plot effective memory bandwidth across resolutions."""
+    """Plot effective memory bandwidth across resolutions (best batch size)."""
     fig, ax = plt.subplots(figsize=(12, 7))
+    
+    # For each filter and resolution, select the best batch size
+    df_best = df.loc[df.groupby(['filter', 'resolution'])['speedup_vs_omp'].idxmax()]
     
     colors = {"grayscale": "#1e88e5", "negative": "#fb8c00", "gaussian_blur": "#43a047"}
     
-    for flt in sorted(df["filter"].unique()):
-        fdf = df[df["filter"] == flt].sort_values("resolution")
+    for flt in sorted(df_best["filter"].unique()):
+        fdf = df_best[df_best["filter"] == flt].sort_values("resolution")
         
         ax.plot(
             fdf["resolution"],
@@ -289,23 +332,28 @@ def plot_bandwidth(df, outdir):
     ax.set_title("Effective Memory Bandwidth", fontsize=14, fontweight="bold")
     ax.legend(fontsize=11)
     ax.grid(True, alpha=0.3)
+
+    ax.set_xticks(sorted(df_best["resolution"].unique()))
+    ax.set_xticklabels([f"{r}²" for r in sorted(df_best["resolution"].unique())])
     
     plt.tight_layout()
-    plt.savefig(outdir / "bandwidth.png", dpi=150, bbox_inches="tight")
-    plt.close()
-    print(f"Generated: bandwidth.png")
+    _save_figure(fig, outdir, "bandwidth")
+    plt.close(fig)
 
 
 # -------------------------
 # Plot 5: Absolute Performance Comparison
 # -------------------------
 def plot_absolute_times(df, outdir):
-    """Compare absolute execution times: CPU single, CPU OpenMP, and GPU."""
+    """Compare absolute execution times: CPU single, CPU OpenMP, and GPU (best batch size)."""
     fig, ax = plt.subplots(figsize=(12, 7))
+    
+    # For each resolution, select the best batch size based on GPU performance
+    df_best = df.loc[df.groupby(['filter', 'resolution'])['speedup_vs_omp'].idxmax()]
     
     # Focus on one filter for clarity (gaussian_blur shows most dramatic difference)
     flt = "gaussian_blur"
-    fdf = df[df["filter"] == flt].sort_values("resolution")
+    fdf = df_best[df_best["filter"] == flt].sort_values("resolution")
     
     resolutions = fdf["resolution"].values
     cpu_single = fdf["cpu_single_ms"].values
@@ -326,11 +374,91 @@ def plot_absolute_times(df, outdir):
                  fontsize=14, fontweight="bold")
     ax.legend(fontsize=11)
     ax.grid(True, alpha=0.3, which="both")
+
+    ax.set_xticks(resolutions)
+    ax.set_xticklabels([f"{int(r)}²" for r in resolutions])
     
     plt.tight_layout()
-    plt.savefig(outdir / "absolute_times.png", dpi=150, bbox_inches="tight")
-    plt.close()
-    print(f"Generated: absolute_times.png")
+    _save_figure(fig, outdir, "absolute_times")
+    plt.close(fig)
+
+
+# -------------------------
+# Plot 6: Batch Size Scaling
+# -------------------------
+def plot_batch_size_scaling(df, outdir):
+    """Plot GPU performance vs batch size for each filter and resolution."""
+    if "batch_size" not in df.columns or df["batch_size"].nunique() <= 1:
+        print("Skipping batch size scaling plot (only one batch size in data)")
+        return
+    
+    fig, axes = plt.subplots(2, 3, figsize=(20, 12))
+    axes = axes.flatten()
+    
+    markers = {512: "o", 1024: "s", 2048: "^", 4096: "D"}
+    batch_ticks = sorted(df["batch_size"].unique().tolist())
+    
+    filters = sorted(df["filter"].unique())
+    
+    # Plot 1-3: GPU Total Time vs Batch Size (one per filter)
+    for idx, flt in enumerate(filters):
+        ax = axes[idx]
+        fdf = df[df["filter"] == flt]
+        
+        for res in sorted(fdf["resolution"].unique()):
+            rdf = fdf[fdf["resolution"] == res].sort_values("batch_size")
+            
+            ax.plot(
+                rdf["batch_size"],
+                rdf["gpu_total_ms"],
+                marker=markers.get(res, "o"),
+                linewidth=2,
+                markersize=10,
+                label=f"{res}×{res}",
+                alpha=0.8
+            )
+        
+        ax.set_xlabel("Batch Size (images per GPU call)", fontsize=12)
+        ax.set_ylabel("GPU Total Time (ms)", fontsize=12)
+        ax.set_title(f"{flt.replace('_', ' ').title()} - Total Time", fontsize=13, fontweight="bold")
+        ax.legend(fontsize=10, title="Resolution", loc="best")
+        ax.grid(True, alpha=0.3)
+        ax.set_xscale("log", base=2)
+        ax.set_xticks(batch_ticks)
+        ax.get_xaxis().set_major_formatter(plt.ScalarFormatter())
+    
+    # Plot 4-6: Speedup vs OpenMP vs Batch Size (one per filter)
+    for idx, flt in enumerate(filters):
+        ax = axes[idx + 3]
+        fdf = df[df["filter"] == flt]
+        
+        for res in sorted(fdf["resolution"].unique()):
+            rdf = fdf[fdf["resolution"] == res].sort_values("batch_size")
+            
+            ax.plot(
+                rdf["batch_size"],
+                rdf["speedup_vs_omp"],
+                marker=markers.get(res, "o"),
+                linewidth=2,
+                markersize=10,
+                label=f"{res}×{res}",
+                alpha=0.8
+            )
+        
+        ax.axhline(1.0, color="red", linestyle="--", alpha=0.5, linewidth=1.5, label="CPU Parity")
+        ax.set_xlabel("Batch Size (images per GPU call)", fontsize=12)
+        ax.set_ylabel("Speedup vs OpenMP (32 threads)", fontsize=12)
+        ax.set_title(f"{flt.replace('_', ' ').title()} - Speedup", fontsize=13, fontweight="bold")
+        ax.legend(fontsize=10, title="Resolution", loc="best")
+        ax.grid(True, alpha=0.3)
+        ax.set_xscale("log", base=2)
+        ax.set_xticks(batch_ticks)
+        ax.get_xaxis().set_major_formatter(plt.ScalarFormatter())
+    
+    plt.suptitle("Batch Size Scaling Analysis: Performance vs Batch Size", fontsize=18, fontweight="bold", y=0.995)
+    plt.tight_layout()
+    _save_figure(fig, outdir, "batch_size_scaling")
+    plt.close(fig)
 
 
 def generate_html_report(df: pd.DataFrame, output_dir: Path):
@@ -350,6 +478,30 @@ def generate_html_report(df: pd.DataFrame, output_dir: Path):
     best_single_row = df.loc[df["speedup_vs_single"].idxmax()]
     best_omp_row = df.loc[df["speedup_vs_omp"].idxmax()]
     worst_omp_row = df.loc[df["speedup_vs_omp"].idxmin()]
+
+    df_transfer = (df["gpu_h2d_ms"] + df["gpu_d2h_ms"]) / df["gpu_total_ms"] * 100
+    df_blur = df[df["filter"] == "gaussian_blur"].copy()
+    blur_transfer = (df_blur["gpu_h2d_ms"] + df_blur["gpu_d2h_ms"]) / df_blur["gpu_total_ms"] * 100
+    df_simple = df[df["filter"].isin(["grayscale", "negative"])].copy()
+    simple_transfer = (df_simple["gpu_h2d_ms"] + df_simple["gpu_d2h_ms"]) / df_simple["gpu_total_ms"] * 100
+
+    blur_speedup_single_min = float(df_blur["speedup_vs_single"].min()) if not df_blur.empty else float("nan")
+    blur_speedup_single_max = float(df_blur["speedup_vs_single"].max()) if not df_blur.empty else float("nan")
+    simple_speedup_omp_min = float(df_simple["speedup_vs_omp"].min()) if not df_simple.empty else float("nan")
+    simple_speedup_omp_max = float(df_simple["speedup_vs_omp"].max()) if not df_simple.empty else float("nan")
+
+    blur_transfer_min = float(blur_transfer.min()) if not blur_transfer.empty else float("nan")
+    simple_transfer_min = float(simple_transfer.min()) if not simple_transfer.empty else float("nan")
+    simple_transfer_max = float(simple_transfer.max()) if not simple_transfer.empty else float("nan")
+
+    max_bw = float(df["bandwidth_gb_s"].max())
+
+    df_best = df.loc[df.groupby(['filter', 'resolution'])['speedup_vs_omp'].idxmax()]
+    blur_4096_best = df_best[(df_best["filter"] == "gaussian_blur") & (df_best["resolution"] == 4096)]
+    blur_4096_best_ms = float(blur_4096_best.iloc[0]["gpu_total_ms"]) if not blur_4096_best.empty else float("nan")
+
+    batch_sizes = sorted(df["batch_size"].unique().tolist())
+    batch_sizes_str = _fmt_int_list(batch_sizes)
     
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -581,7 +733,6 @@ footer a:hover {{
     <div class="subtitle">GPU-Accelerated Image Processing Benchmark Report</div>
     <div class="meta">
         <span class="badge badge-info">AMD ROCm/HIP</span>
-        <span class="badge badge-info">Single-Image Architecture</span>
         <span class="badge badge-info">Generated: {date_str}</span>
     </div>
 </header>
@@ -613,13 +764,6 @@ footer a:hover {{
     </div>
 </div>
 
-<div class="insight">
-    <h4>Key Finding: Single-Image Processing is Optimal</h4>
-    <p>After extensive benchmarking, batching and async streaming were <strong>removed</strong> from this project. 
-    The simplified single-image synchronous architecture provides the best performance for these workloads. 
-    See <code>BATCHING_REALITY.md</code> for detailed analysis.</p>
-</div>
-
 <h2>Performance Analysis</h2>
 
 <div class="figure">
@@ -628,6 +772,7 @@ footer a:hover {{
         <strong>GPU Speedup vs CPU (Both Single-threaded and OpenMP)</strong> – Shows performance relative to single-threaded CPU 
         (top row, up to {max_speedup_single:.0f}×) and OpenMP CPU with 32 threads (bottom row, up to {max_speedup_omp:.0f}×). 
         Gaussian blur achieves massive speedups due to compute-intensive nature, while simple filters are memory-bound.
+        <div style="margin-top: 8px;"><a href="speedup_vs_resolution.svg">Download SVG</a></div>
     </div>
 </div>
 
@@ -636,7 +781,8 @@ footer a:hover {{
     <div class="caption">
         <strong>GPU Time Breakdown</strong> – Shows proportion of time spent in H2D transfer (blue), 
         kernel execution (green), and D2H transfer (red). Note how transfer overhead dominates for 
-        simple filters but becomes negligible for gaussian blur.
+        simple filters but drops substantially for gaussian blur.
+        <div style="margin-top: 8px;"><a href="gpu_time_breakdown.svg">Download SVG</a></div>
     </div>
 </div>
 
@@ -644,7 +790,8 @@ footer a:hover {{
     <img src="transfer_overhead.png" alt="Transfer Overhead">
     <div class="caption">
         <strong>PCIe Transfer Overhead</strong> – Percentage of total GPU time spent on memory transfers. 
-        Simple filters are 70-95% memory-bound, while gaussian blur drops to ~30% overhead at large resolutions.
+        Simple filters are {simple_transfer_min:.0f}-{simple_transfer_max:.0f}% transfer-dominated, while gaussian blur drops to ~{blur_transfer_min:.0f}% at large resolutions.
+        <div style="margin-top: 8px;"><a href="transfer_overhead.svg">Download SVG</a></div>
     </div>
 </div>
 
@@ -652,7 +799,8 @@ footer a:hover {{
     <img src="bandwidth.png" alt="Bandwidth">
     <div class="caption">
         <strong>Effective Memory Bandwidth</strong> – Achieved bandwidth increases with image size as 
-        transfer overhead amortizes. Peak bandwidth reaches ~23 GB/s for large images.
+        transfer overhead amortizes. Peak bandwidth reaches ~{max_bw:.1f} GB/s for large images.
+        <div style="margin-top: 8px;"><a href="bandwidth.svg">Download SVG</a></div>
     </div>
 </div>
 
@@ -661,7 +809,16 @@ footer a:hover {{
     <div class="caption">
         <strong>Absolute Performance Comparison</strong> – Log-scale plot comparing single-threaded CPU, 
         OpenMP CPU (32 threads), and GPU execution times for Gaussian blur. GPU maintains consistent 
-        sub-15ms performance even for 4096² images.
+        ~{blur_4096_best_ms:.1f}ms performance even for 4096² images (best batch for that resolution).
+        <div style="margin-top: 8px;"><a href="absolute_times.svg">Download SVG</a></div>
+    </div>
+</div>
+
+<div class="figure">
+    <img src="batch_size_scaling.png" alt="Batch Size Scaling">
+    <div class="caption">
+        <strong>Batch Size Scaling</strong> – How per-image GPU time and OpenMP speedup vary with batch size.
+        <div style="margin-top: 8px;"><a href="batch_size_scaling.svg">Download SVG</a></div>
     </div>
 </div>
 
@@ -719,6 +876,7 @@ footer a:hover {{
     <tr>
         <th>Filter</th>
         <th>Resolution</th>
+        <th>Batch Size</th>
         <th>GPU Total (ms)</th>
         <th>Kernel (ms)</th>
         <th>Speedup vs Single</th>
@@ -730,10 +888,11 @@ footer a:hover {{
 """
 
     # Add all results to table
-    for _, row in df.sort_values(["filter", "resolution"]).iterrows():
+    for _, row in df.sort_values(["filter", "resolution", "batch_size"]).iterrows():
         html_content += f"""    <tr>
         <td>{row['filter'].replace('_', ' ').title()}</td>
         <td>{row['resolution']}²</td>
+        <td>{row['batch_size']}</td>
         <td>{row['gpu_total_ms']:.3f}</td>
         <td>{row['gpu_kernel_ms']:.3f}</td>
         <td>{row['speedup_vs_single']:.2f}×</td>
@@ -742,7 +901,7 @@ footer a:hover {{
     </tr>
 """
 
-    html_content += """</tbody>
+    html_content += f"""</tbody>
 </table>
 
 <h2>Key Insights</h2>
@@ -750,18 +909,19 @@ footer a:hover {{
 <div class="insight">
     <h4>Compute-Bound vs Memory-Bound</h4>
     <p><strong>Gaussian blur</strong> is compute-intensive (O(n² × kernel_size²)) and shows excellent GPU scaling, 
-    achieving 600-700× speedup vs single-threaded CPU. <strong>Grayscale and negative</strong> are memory-bound 
-    (simple per-pixel operations) and show only 1-10× speedup vs OpenMP, limited by PCIe transfer overhead.</p>
+    achieving {blur_speedup_single_min:.0f}-{blur_speedup_single_max:.0f}× speedup vs single-threaded CPU. <strong>Grayscale and negative</strong> are memory-bound 
+    (simple per-pixel operations) and range from {simple_speedup_omp_min:.2f}-{simple_speedup_omp_max:.2f}× vs OpenMP, limited by PCIe transfer overhead.</p>
 </div>
 
 <div class="insight">
-    <h4>Why Single-Image Architecture?</h4>
-    <p>Extensive testing proved that:</p>
+    <h4>Batch Processing Architecture</h4>
+    <p>The system uses configurable batch processing:</p>
     <ul style="margin-left: 25px; margin-top: 10px;">
-        <li>Batching adds 16% overhead due to sequential memcpy latency</li>
-        <li>Multi-stream async adds 28-44% overhead due to allocation costs</li>
-        <li>Kernels execute too fast (&lt;0.04ms) for overlap benefits</li>
-        <li>Single-image synchronous execution is optimal for all tested workloads</li>
+        <li><strong>Batch sizes tested:</strong> {batch_sizes_str} images per GPU call</li>
+        <li><strong>Memory allocation:</strong> Single large contiguous buffer for entire batch</li>
+        <li><strong>Kernel launch:</strong> One kernel processes all images in batch simultaneously</li>
+        <li><strong>Performance impact:</strong> Batch size can shift results for memory-bound filters because transfers dominate</li>
+        <li><strong>Optimal batch size:</strong> Varies by filter and resolution</li>
     </ul>
 </div>
 
@@ -781,7 +941,8 @@ footer a:hover {{
 <tbody>
     <tr><td>GPU</td><td>AMD Radeon RX 6900 XT</td></tr>
     <tr><td>Framework</td><td>HIP/ROCm</td></tr>
-    <tr><td>Architecture</td><td>Single-image synchronous</td></tr>
+    <tr><td>Architecture</td><td>Batch processing with synchronous execution</td></tr>
+    <tr><td>Batch Sizes Tested</td><td>{batch_sizes_str} images</td></tr>
     <tr><td>Image Format</td><td>RGB (3 channels), 8-bit per channel</td></tr>
     <tr><td>Test Resolutions</td><td>512², 1024², 2048², 4096²</td></tr>
     <tr><td>CPU Baseline (Single)</td><td>Single-threaded</td></tr>
@@ -840,6 +1001,7 @@ def main():
     plot_transfer_overhead(df, outdir)
     plot_bandwidth(df, outdir)
     plot_absolute_times(df, outdir)
+    plot_batch_size_scaling(df, outdir)
 
     print("\n" + "=" * 80)
     print("Generating HTML report...")

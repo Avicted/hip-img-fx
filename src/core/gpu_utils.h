@@ -197,10 +197,19 @@ namespace imgfx::core
         int height,
         int channels);
 
+    // Single image processing with optional timing
     hipError_t apply_filter_gpu(
         FILTER_TYPE filter_type,
         image_t &input_image,
         image_t &output_image,
+        bool enable_timing = false,
+        GPUTimings *timings = nullptr);
+
+    // Batch processing for multiple images (with optional timing)
+    hipError_t apply_filter_gpu(
+        FILTER_TYPE filter_type,
+        std::vector<image_t> &input_images,
+        std::vector<image_t> &output_images,
         bool enable_timing = false,
         GPUTimings *timings = nullptr);
 

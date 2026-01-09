@@ -18,7 +18,7 @@ namespace imgfx::core
 
     typedef struct
     {
-        int offset; // start index of the image in the flattened buffer
+        size_t offset; // start index of the image in the flattened buffer (in bytes)
         int width;
         int height;
         int channels;

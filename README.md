@@ -80,6 +80,21 @@ ninja -C build
 
 # Verify build
 ./build/hip-img-fx --help
+Running HIP image fx...
+
+Usage: hip-img-fx [options]
+Options:
+  --input <input_file|input_dir>     Specifies the input file or directory path.
+  --output <output_file|output_dir>  Specifies the output file or directory path.
+  --filter <filter_type>             Specifies the type of filter to apply (e.g., "grayscale", "negative", "gaussian-blur").
+  --use-cpu                          Use CPU for processing instead of GPU.
+  --batch-size <N>                   Number of images to process per GPU batch (default: 64).
+  --help                             Displays this help information.
+
+Notes:
+  - For batch processing, specify both --input and --output as directories.
+  - For single image processing, specify both as files.
+  - Supported filters: grayscale, negative, gaussian-blur
 ```
 
 ### Basic Usage

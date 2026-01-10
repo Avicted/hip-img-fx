@@ -128,3 +128,30 @@ executable(
   include_directories: [inc_src, inc_sys],
   install: false,
 )
+
+# ============================================================================
+# PUBLIC API INSTALLATION
+# ============================================================================
+
+# Install public headers
+install_headers(
+  'include/hip-img-fx/autotune/orchestrator.h',
+  'include/hip-img-fx/autotune/tuning_config.h',
+  'include/hip-img-fx/autotune/types.h',
+  'include/hip-img-fx/autotune/kernel_traits_concepts.h',
+  'include/hip-img-fx/autotune/benchmarker.h',
+  'include/hip-img-fx/autotune/cache_store.h',
+  'include/hip-img-fx/autotune/embedded_cache.h',
+  'include/hip-img-fx/autotune/hip_event.h',
+  subdir: 'hip-img-fx/autotune'
+)
+
+# Generate pkg-config file
+pkg = import('pkgconfig')
+pkg.generate(
+  name: 'hip-img-fx',
+  description: 'HIP autotuning framework for GPU kernels',
+  version: meson.project_version(),
+  subdirs: 'hip-img-fx',
+  # Note: HIP is provided by system ROCm installation
+)

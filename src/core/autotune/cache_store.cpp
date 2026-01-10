@@ -23,14 +23,6 @@ namespace imgfx::core::autotune
             return result;
         }
 
-        std::string get_timestamp()
-        {
-            std::time_t now = std::time(nullptr);
-            char buf[64];
-            std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&now));
-            return std::string(buf);
-        }
-
         std::string find_json_value(const std::string &json, const std::string &key)
         {
             std::string search_key = "\"" + key + "\":";

@@ -3,8 +3,7 @@ project('hip-img-fx', 'cpp',
   default_options: [
     'cpp_std=c++20',
     'b_lto=true',
-    'buildtype=release',
-    'warning_level=0',
+    'warning_level=2',
   ]
 )
 

@@ -35,29 +35,74 @@
 #include "benchmarker.h"
 #include "types.h"
 #include "embedded_cache.h"
+#include "kernel_traits_concepts.h"
 #include "../gpu_utils.h"
 
 namespace imgfx::core::autotune
 {
     /**
-     * @brief Main autotuning orchestrator
+     * @brief Main autotuning orchestrator with compile-time safety enforcement
      *
      * Coordinates the autotuning process using kernel-specific traits.
      * Template-based design ensures zero runtime overhead and type safety.
      *
+     * NEW (January 2026): Compile-time validation using C++20 concepts
+     * - Enforces stateless KernelTraits (no mutable state)
+     * - Validates stable cache keys at compile time
+     * - Checks for non-empty candidate sets
+     * - Supports candidate pruning (skip autotuning for simple kernels)
+     *
      * @tparam KernelTraits Traits struct defining kernel characteristics
      *
-     * KernelTraits Requirements:
+     * KernelTraits Requirements (enforced at compile time):
      * - static constexpr const char* name()
      * - struct Args { ... } - Kernel launch arguments
      * - struct Context { std::string cache_key() const; } - Cache context
      * - static std::vector<TuningConfig> generate_candidates()
      * - static bool is_valid_config(const TuningConfig&, const Args&)
      * - static void launch(const TuningConfig&, const Args&, hipStream_t)
+     *
+     * Optional Requirements:
+     * - static constexpr bool autotune_needed - Set to false to skip autotuning
+     * - static TuningConfig default_config() - Provide default when skipping
      */
     template <typename KernelTraits>
     class TuningOrchestrator
     {
+        // ====================================================================
+        // COMPILE-TIME VALIDATION (C++20 Concepts)
+        // ====================================================================
+
+        // INV-0: Traits must be stateless (no mutable state, all methods static)
+        static_assert(concepts::StatelessKernelTraits<KernelTraits>,
+                      "KernelTraits must be stateless - remove all non-static data members");
+
+        // INV-1: Must have unique kernel name for caching
+        static_assert(concepts::HasKernelName<KernelTraits>,
+                      "KernelTraits must define static name() method returning const char*");
+
+        // INV-2: Must define Args and Context types
+        static_assert(concepts::HasArgsType<KernelTraits>,
+                      "KernelTraits must define nested Args type");
+        static_assert(concepts::HasContextType<KernelTraits>,
+                      "KernelTraits must define nested Context type");
+
+        // INV-3: Context must have stable cache_key() method
+        static_assert(concepts::StableCacheKey<typename KernelTraits::Context>,
+                      "Context type must have cache_key() const method returning std::string");
+
+        // INV-4: Must have generate_candidates() method
+        static_assert(concepts::NonEmptyCandidates<KernelTraits, TuningConfig>,
+                      "KernelTraits must define generate_candidates() returning vector<TuningConfig>");
+
+        // INV-5: Must have is_valid_config() method
+        static_assert(concepts::ValidConfigurations<KernelTraits, TuningConfig, typename KernelTraits::Args>,
+                      "KernelTraits must define is_valid_config(config, args) returning bool");
+
+        // INV-6: Must have launch() method
+        static_assert(concepts::HasLaunchMethod<KernelTraits, TuningConfig, typename KernelTraits::Args>,
+                      "KernelTraits must define launch(config, args, stream) method");
+
     public:
         using Args = typename KernelTraits::Args;
         using Context = typename KernelTraits::Context;
@@ -114,6 +159,48 @@ namespace imgfx::core::autotune
         {
             // Validate options
             AUTOTUNE_ASSERT(options.validate(), "Invalid TuningOptions provided");
+
+            // ================================================================
+            // CANDIDATE PRUNING: Skip autotuning for simple kernels
+            // ================================================================
+
+            // Check 1: Explicit autotune_needed flag
+            if constexpr (concepts::HasAutotuneFlag<KernelTraits>)
+            {
+                if (!KernelTraits::autotune_needed && !options.force_retune)
+                {
+                    // Kernel explicitly opts out of autotuning
+                    return concepts::get_default_config<KernelTraits, TuningConfig>();
+                }
+            }
+
+            // Check 2: Runtime heuristic for workload size
+            // (Only if no explicit flag is set)
+            if constexpr (!concepts::HasAutotuneFlag<KernelTraits>)
+            {
+                // Estimate workload size if possible
+                size_t workload_bytes = 0;
+                if constexpr (requires { args.num_images; args.max_image_bytes; })
+                {
+                    workload_bytes = args.num_images * args.max_image_bytes;
+                }
+
+                if (concepts::should_skip_autotuning<KernelTraits>(
+                        concepts::PruningHeuristics{}, workload_bytes))
+                {
+                    // Workload too small to benefit from tuning
+                    if (options.verbose)
+                    {
+                        printf("[AutoTune] Skipping tuning for small workload (%zu bytes)\n",
+                               workload_bytes);
+                    }
+                    return concepts::get_default_config<KernelTraits, TuningConfig>();
+                }
+            }
+
+            // ================================================================
+            // NORMAL PATH: Check caches and perform autotuning if needed
+            // ================================================================
 
             // Fast path: thread-local cache (~5ns overhead)
             thread_local static std::unordered_map<std::string, TuningConfig> fast_cache;
@@ -258,16 +345,31 @@ namespace imgfx::core::autotune
             // Generate candidate configurations
             std::vector<TuningConfig> candidates = KernelTraits::generate_candidates();
 
-            // INV-2: Candidate list must not be empty
-            if (candidates.empty())
+            // ================================================================
+            // RUNTIME VALIDATION: Non-empty candidate set (INV-2)
+            // ================================================================
+            ASSERT_NON_EMPTY_CANDIDATES(candidates, KernelTraits);
+
+            // Additional runtime check with detailed error message
+            if (!concepts::validate_candidates(candidates))
             {
                 fprintf(stderr, "[AutoTune ERROR] generate_candidates() returned empty list\n");
                 fprintf(stderr, "  Kernel: %s\n", KernelTraits::name());
                 fprintf(stderr, "  This is a bug in the kernel traits implementation.\n");
+                fprintf(stderr, "  Invariant violated: INV-2 (Non-Empty Candidate Set)\n");
                 HIP_ERRCHK(hipStreamDestroy(stream));
                 AUTOTUNE_ASSERT(false, "Empty candidate list - invariant violation (INV-2)");
                 return TuningConfig{}; // Unreachable in debug, fallback in release
             }
+
+            if (options.verbose)
+            {
+                printf("[AutoTuner] Generated %zu candidate configurations\n", candidates.size());
+            }
+
+            // ================================================================
+            // RUNTIME VALIDATION: Valid configurations (INV-1)
+            // ================================================================
 
             // Filter invalid candidates
             std::vector<TuningConfig> valid_candidates;
@@ -277,6 +379,15 @@ namespace imgfx::core::autotune
                 {
                     valid_candidates.push_back(config);
                 }
+            }
+
+            // Count and report validation results
+            size_t valid_count = concepts::count_valid_candidates<KernelTraits>(candidates, args);
+
+            if (options.verbose && valid_count < candidates.size())
+            {
+                printf("[AutoTuner] Filtered to %zu valid candidates (%zu invalid)\n",
+                       valid_count, candidates.size() - valid_count);
             }
 
             if (valid_candidates.empty())

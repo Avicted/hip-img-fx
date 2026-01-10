@@ -184,7 +184,7 @@ void run_benchmark_suite(const BenchConfig &config)
 
     // Test configurations
     std::vector<int> resolutions = {512, 1024, 2048, 4096};
-    std::vector<int> batch_sizes = {1, 32, 64};
+    std::vector<int> batch_sizes = {1, 8, 16, 32, 64};
     std::vector<std::pair<FILTER_TYPE, std::string>> filters = {
         {FILTER_TYPE::GRAYSCALE, "grayscale"},
         {FILTER_TYPE::NEGATIVE, "negative"},

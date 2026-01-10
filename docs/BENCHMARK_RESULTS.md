@@ -80,7 +80,7 @@
 
 This repository supports GPU directory batching via `--batch-size` in the main application.
 
-The benchmark dataset referenced below contains a `batch_size` column (1, 32, 64). Interpreting performance differences across that column requires that the benchmark harness actually processes that many images per GPU call. Verify the harness behavior in `bench/run_bench.cpp` for the CSV you are analyzing.
+The benchmark dataset referenced below contains a `batch_size` column (1, 8, 16, 32, 64). Interpreting performance differences across that column requires that the benchmark harness actually processes that many images per GPU call. Verify the harness behavior in `bench/run_bench.cpp` for the CSV you are analyzing.
 
 ### Architecture Details
 
@@ -167,7 +167,7 @@ Peak bandwidth of ~23.9 GB/s achieved at 4096².
 
 ### Test Configuration
 - **Resolutions:** 512², 1024², 2048², 4096²
-- **Batch Sizes:** 1, 32, 64 images
+- **Batch Sizes:** 1, 8, 16, 32, 64 images
 - **Filters:** Grayscale, Negative, Gaussian Blur (11×11 kernel)
 - **Image Format:** RGB, 3 channels, 8-bit per channel
 - **Execution Mode:** Synchronous (H2D → Kernel → D2H)

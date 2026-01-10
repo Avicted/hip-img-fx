@@ -6,7 +6,7 @@
 
 GPU-accelerated image processing framework demonstrating real-world HIP performance engineering principles.
 
-This project showcases production-grade GPU optimization through empirical measurement and data-driven architectural decisions. Through extensive benchmarking across 36 configurations, we validated a **batch processing architecture** that delivers optimal throughput for compute-intensive workloads. The framework demonstrates fine-grained profiling, honest performance analysis, and the value of measuring rather than assuming.
+This project showcases production-grade GPU optimization through empirical measurement and data-driven architectural decisions. Through extensive benchmarking across 60 configurations, we validated a **batch processing architecture** that delivers optimal throughput for compute-intensive workloads. The framework demonstrates fine-grained profiling, honest performance analysis, and the value of measuring rather than assuming.
 
 **Performance Highlight**: Achieves **577× speedup** on Gaussian blur vs single-threaded CPU and **41.8× vs OpenMP** (32 threads) on AMD Radeon RX 6900 XT
 
@@ -20,7 +20,7 @@ This repository demonstrates:
 
 - **GPU Profiling**: Fine-grained timing with HIP events (H2D, kernel, D2H breakdown)
 - **Memory Analysis**: Bandwidth utilization and transfer overhead measurement
-- **Data-Driven Decisions**: Extensive benchmarking (36 configurations) to validate architectural choices
+- **Data-Driven Decisions**: Extensive benchmarking (60 configurations) to validate architectural choices
 - **Reproducible Benchmarking**: Production-quality harness with statistical analysis
 - **Honest Performance Reporting**: Documenting both successes (577× speedup) and limitations (GPU slower than CPU for simple filters)
 
@@ -166,7 +166,7 @@ Notes:
 - **Sweep Parameters**:
   - Image resolutions: 512², 1024², 2048², 4096²
   - Filter types: grayscale, negative, gaussian_blur
-  - Batch sizes: 1, 32, 64 images per GPU call
+  - Batch sizes: 1, 8, 16, 32, 64 images per GPU call
 
 **Total Configurations**: 36 (3 filters × 4 resolutions × 3 batch sizes)
 
@@ -214,7 +214,7 @@ Bandwidth:         21.92 GB/s
 Transfer Overhead: 92% of GPU time (memory-bound)
 ```
 
-**See [Benchmark Results](docs/BENCHMARK_RESULTS.md) for complete analysis (36 configurations, batch size impact analysis)**
+**See [Benchmark Results](docs/BENCHMARK_RESULTS.md) for complete analysis (60 configurations, batch size impact analysis)**
 
 ### Visualizations
 
@@ -257,7 +257,7 @@ process_batch_gpu(images, filter, batch_size);
 // Memory layout: [img0][img1][img2]...[imgN]
 ```
 
-**Key Finding**: Through empirical testing across 36 configurations, batch processing provides optimal throughput. Batch size impact varies by filter type (see [Benchmark Results](docs/BENCHMARK_RESULTS.md)).
+**Key Finding**: Through empirical testing across 60 configurations, batch processing provides optimal throughput. Batch size impact varies by filter type (see [Benchmark Results](docs/BENCHMARK_RESULTS.md)).
 
 ### 3. Memory Access Optimization
 

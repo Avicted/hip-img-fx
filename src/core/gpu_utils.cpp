@@ -207,27 +207,25 @@ namespace imgfx::core
         {
         case FILTER_TYPE::GRAYSCALE:
         {
-            // Use autotuned grayscale kernel
-            imgfx::filters::apply_grayscale_autotuned(
+            // Use NEW autotuned grayscale kernel (v2 - TuningOrchestrator)
+            imgfx::filters::apply_grayscale_autotuned_v2(
                 (unsigned char *)d_input.ptr,
                 (unsigned char *)d_output.ptr,
                 (image_meta_t *)d_metas.ptr,
                 (int)input_images.size(),
                 max_image_bytes,
-                get_autotuner(),
                 0); // default stream
             break;
         }
         case FILTER_TYPE::NEGATIVE:
         {
-            // Use autotuned negative kernel
-            imgfx::filters::apply_negative_autotuned(
+            // Use NEW autotuned negative kernel (v2 - TuningOrchestrator)
+            imgfx::filters::apply_negative_autotuned_v2(
                 (unsigned char *)d_input.ptr,
                 (unsigned char *)d_output.ptr,
                 (image_meta_t *)d_metas.ptr,
                 (int)input_images.size(),
                 max_image_bytes,
-                get_autotuner(),
                 0); // default stream
             break;
         }
@@ -235,25 +233,24 @@ namespace imgfx::core
         {
             if (GAUSSIAN_BLUR_AMOUNT % 2 == 0)
             {
-                fprintf(stderr, "ERROR: blurAmount must be an odd number. You chose: %d.\n", GAUSSIAN_BLUR_AMOUNT);
+                fprintf(stderr, "ERROR: blurAmount must be an odd number. You chose: %d.\\n", GAUSSIAN_BLUR_AMOUNT);
                 return hipErrorInvalidValue;
             }
 
-            // Use autotuned gaussian_blur kernel
-            imgfx::filters::apply_gaussian_blur_autotuned(
+            // Use NEW autotuned gaussian_blur kernel (v2 - TuningOrchestrator)
+            imgfx::filters::apply_gaussian_blur_autotuned_v2(
                 (unsigned char *)d_input.ptr,
                 (unsigned char *)d_output.ptr,
                 (image_meta_t *)d_metas.ptr,
                 (int)input_images.size(),
                 max_image_bytes,
                 GAUSSIAN_BLUR_AMOUNT,
-                get_autotuner(),
                 0); // default stream
             break;
         }
         default:
         {
-            printf("ERROR: Unsupported GPU filter type\n");
+            printf("ERROR: Unsupported GPU filter type\\n");
             return hipErrorInvalidValue;
         }
         }

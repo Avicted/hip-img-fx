@@ -200,18 +200,222 @@ namespace imgfx::filters
         }
     };
 
+    // ========================================================================
+    // NEGATIVE FILTER - New Autotuning Framework
+    // ========================================================================
+
+    /**
+     * @brief Kernel traits for negative filter (new autotuning framework)
+     */
+    struct NegativeKernelTraits
+    {
+        static constexpr const char *name() { return "negative_v2"; }
+
+        struct Args
+        {
+            const unsigned char *input;
+            unsigned char *output;
+            const imgfx::core::image_meta_t *metas;
+            int num_images;
+            size_t max_image_bytes;
+        };
+
+        struct Context
+        {
+            size_t image_bytes;
+
+            std::string cache_key() const
+            {
+                if (image_bytes < 1024 * 1024)
+                    return "small";
+                if (image_bytes < 10 * 1024 * 1024)
+                    return "medium";
+                return "large";
+            }
+        };
+
+        static std::vector<imgfx::core::autotune::TuningConfig> generate_candidates()
+        {
+            using imgfx::core::autotune::TuningConfig;
+            std::vector<TuningConfig> configs;
+
+            // 1D configurations
+            for (int bx : {64, 128, 256, 512})
+            {
+                TuningConfig cfg;
+                cfg.set("block_x", bx);
+                cfg.set("block_y", 1);
+                configs.push_back(cfg);
+            }
+
+            // 2D configurations
+            for (int bx : {16, 32})
+            {
+                for (int by : {4, 8, 16})
+                {
+                    TuningConfig cfg;
+                    cfg.set("block_x", bx);
+                    cfg.set("block_y", by);
+                    configs.push_back(cfg);
+                }
+            }
+
+            return configs;
+        }
+
+        static bool is_valid_config(
+            const imgfx::core::autotune::TuningConfig &cfg,
+            const Args & /*args*/)
+        {
+            int threads = cfg.block_x() * cfg.block_y();
+            if (threads % 64 != 0)
+                return false;
+            if (threads < 64 || threads > 1024)
+                return false;
+            return true;
+        }
+
+        static void launch(
+            const imgfx::core::autotune::TuningConfig &cfg,
+            const Args &args,
+            hipStream_t stream)
+        {
+            int threads_per_block = cfg.block_x() * cfg.block_y();
+            int blocks_x = (args.max_image_bytes + threads_per_block - 1) / threads_per_block;
+
+            dim3 block_dim(cfg.block_x(), cfg.block_y(), 1);
+            dim3 grid_dim(blocks_x, args.num_images, 1);
+
+            hipLaunchKernelGGL(
+                negative_kernel,
+                grid_dim,
+                block_dim,
+                0,
+                stream,
+                args.input,
+                args.output,
+                args.metas,
+                args.num_images);
+        }
+    };
+
+    // ========================================================================
+    // GAUSSIAN BLUR FILTER - New Autotuning Framework
+    // ========================================================================
+
+    /**
+     * @brief Kernel traits for Gaussian blur filter (new autotuning framework)
+     */
+    struct GaussianBlurKernelTraits
+    {
+        static constexpr const char *name() { return "gaussian_blur_v2"; }
+
+        struct Args
+        {
+            const unsigned char *input;
+            unsigned char *output;
+            const imgfx::core::image_meta_t *metas;
+            int num_images;
+            size_t max_image_bytes;
+            int blur_amount;
+        };
+
+        struct Context
+        {
+            size_t image_bytes;
+            int blur_amount;
+
+            std::string cache_key() const
+            {
+                std::string size_key;
+                if (image_bytes < 1024 * 1024)
+                    size_key = "small";
+                else if (image_bytes < 10 * 1024 * 1024)
+                    size_key = "medium";
+                else
+                    size_key = "large";
+
+                // Blur amount affects performance
+                std::string blur_key = blur_amount < 5 ? "blur_small" : "blur_large";
+                return size_key + "_" + blur_key;
+            }
+        };
+
+        static std::vector<imgfx::core::autotune::TuningConfig> generate_candidates()
+        {
+            using imgfx::core::autotune::TuningConfig;
+            std::vector<TuningConfig> configs;
+
+            // 2D configurations (better for blur due to 2D memory access)
+            for (int bx : {8, 16, 32})
+            {
+                for (int by : {8, 16, 32})
+                {
+                    if (bx * by >= 64 && bx * by <= 1024)
+                    {
+                        TuningConfig cfg;
+                        cfg.set("block_x", bx);
+                        cfg.set("block_y", by);
+                        configs.push_back(cfg);
+                    }
+                }
+            }
+
+            // Also test some 1D configurations
+            for (int bx : {128, 256, 512})
+            {
+                TuningConfig cfg;
+                cfg.set("block_x", bx);
+                cfg.set("block_y", 1);
+                configs.push_back(cfg);
+            }
+
+            return configs;
+        }
+
+        static bool is_valid_config(
+            const imgfx::core::autotune::TuningConfig &cfg,
+            const Args & /*args*/)
+        {
+            int threads = cfg.block_x() * cfg.block_y();
+            if (threads % 64 != 0)
+                return false;
+            if (threads < 64 || threads > 1024)
+                return false;
+            return true;
+        }
+
+        static void launch(
+            const imgfx::core::autotune::TuningConfig &cfg,
+            const Args &args,
+            hipStream_t stream)
+        {
+            int threads_per_block = cfg.block_x() * cfg.block_y();
+            int blocks_x = (args.max_image_bytes + threads_per_block - 1) / threads_per_block;
+
+            dim3 block_dim(cfg.block_x(), cfg.block_y(), 1);
+            dim3 grid_dim(blocks_x, args.num_images, 1);
+
+            hipLaunchKernelGGL(
+                gaussian_blur_kernel,
+                grid_dim,
+                block_dim,
+                0,
+                stream,
+                args.input,
+                args.output,
+                args.metas,
+                args.num_images,
+                args.blur_amount);
+        }
+    };
+
+    // ========================================================================
+    // V2 AUTOTUNED FUNCTIONS (New Framework)
+    // ========================================================================
+
     /**
      * @brief Apply grayscale filter using new autotuning framework
-     *
-     * This is the new implementation using TuningOrchestrator.
-     * Kept separate from apply_grayscale_autotuned() for comparison.
-     *
-     * @param input Device input buffer
-     * @param output Device output buffer
-     * @param metas Device metadata buffer
-     * @param num_images Number of images in batch
-     * @param max_image_bytes Maximum image size in bytes
-     * @param stream HIP stream for kernel execution
      */
     void apply_grayscale_autotuned_v2(
         const unsigned char *input,
@@ -220,4 +424,28 @@ namespace imgfx::filters
         int num_images,
         size_t max_image_bytes,
         hipStream_t stream);
+
+    /**
+     * @brief Apply negative filter using new autotuning framework
+     */
+    void apply_negative_autotuned_v2(
+        const unsigned char *input,
+        unsigned char *output,
+        const imgfx::core::image_meta_t *metas,
+        int num_images,
+        size_t max_image_bytes,
+        hipStream_t stream);
+
+    /**
+     * @brief Apply Gaussian blur filter using new autotuning framework
+     */
+    void apply_gaussian_blur_autotuned_v2(
+        const unsigned char *input,
+        unsigned char *output,
+        const imgfx::core::image_meta_t *metas,
+        int num_images,
+        size_t max_image_bytes,
+        int blur_amount,
+        hipStream_t stream);
+
 }

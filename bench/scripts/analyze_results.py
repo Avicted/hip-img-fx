@@ -7,7 +7,7 @@ This script analyzes CSV output produced by the benchmark harness in
 Current benchmark sweep (as configured in the harness):
 - Resolutions: 512, 1024, 2048, 4096
 - Filters: grayscale, negative, gaussian_blur
-- Batch sizes: 1, 32, 64
+- Batch sizes: 1, 8, 16, 32, 64
 
 Notes:
 - The main application supports directory batching via `--batch-size`.
@@ -131,10 +131,13 @@ def plot_speedup_vs_resolution(df, outdir):
     df_best = df.loc[df.groupby(['filter', 'resolution'])['speedup_vs_omp'].idxmax()]
     
     # Speedup vs Single-threaded (Linear)
+    resolutions = sorted(df_best["resolution"].unique())
+    x_positions = list(range(len(resolutions)))
+    
     for flt in sorted(df_best["filter"].unique()):
         fdf = df_best[df_best["filter"] == flt].sort_values("resolution")
         ax1.plot(
-            fdf["resolution"],
+            x_positions,
             fdf["speedup_vs_single"],
             marker="o",
             linewidth=2,
@@ -148,12 +151,14 @@ def plot_speedup_vs_resolution(df, outdir):
     ax1.set_title("GPU Speedup vs Single-threaded CPU (Linear, Best Batch Size)", fontsize=14, fontweight="bold")
     ax1.legend(fontsize=10)
     ax1.grid(True, alpha=0.3)
+    ax1.set_xticks(x_positions)
+    ax1.set_xticklabels([f"{r}²" for r in resolutions])
     
     # Speedup vs Single-threaded (Log)
     for flt in sorted(df_best["filter"].unique()):
         fdf = df_best[df_best["filter"] == flt].sort_values("resolution")
         ax2.plot(
-            fdf["resolution"],
+            x_positions,
             fdf["speedup_vs_single"],
             marker="o",
             linewidth=2,
@@ -168,12 +173,14 @@ def plot_speedup_vs_resolution(df, outdir):
     ax2.set_title("GPU Speedup vs Single-threaded CPU (Log, Best Batch Size)", fontsize=14, fontweight="bold")
     ax2.legend(fontsize=10)
     ax2.grid(True, alpha=0.3, which="both")
+    ax2.set_xticks(x_positions)
+    ax2.set_xticklabels([f"{r}²" for r in resolutions])
     
     # Speedup vs OpenMP (Linear)
     for flt in sorted(df_best["filter"].unique()):
         fdf = df_best[df_best["filter"] == flt].sort_values("resolution")
         ax3.plot(
-            fdf["resolution"],
+            x_positions,
             fdf["speedup_vs_omp"],
             marker="s",
             linewidth=2,
@@ -187,12 +194,14 @@ def plot_speedup_vs_resolution(df, outdir):
     ax3.set_title("GPU Speedup vs OpenMP CPU (Linear, Best Batch Size)", fontsize=14, fontweight="bold")
     ax3.legend(fontsize=10)
     ax3.grid(True, alpha=0.3)
+    ax3.set_xticks(x_positions)
+    ax3.set_xticklabels([f"{r}²" for r in resolutions])
     
     # Speedup vs OpenMP (Log)
     for flt in sorted(df_best["filter"].unique()):
         fdf = df_best[df_best["filter"] == flt].sort_values("resolution")
         ax4.plot(
-            fdf["resolution"],
+            x_positions,
             fdf["speedup_vs_omp"],
             marker="s",
             linewidth=2,
@@ -207,10 +216,8 @@ def plot_speedup_vs_resolution(df, outdir):
     ax4.set_title("GPU Speedup vs OpenMP CPU (Log, Best Batch Size)", fontsize=14, fontweight="bold")
     ax4.legend(fontsize=10)
     ax4.grid(True, alpha=0.3, which="both")
-
-    for ax in (ax1, ax2, ax3, ax4):
-        ax.set_xticks(sorted(df_best["resolution"].unique()))
-        ax.set_xticklabels([f"{r}²" for r in sorted(df_best["resolution"].unique())])
+    ax4.set_xticks(x_positions)
+    ax4.set_xticklabels([f"{r}²" for r in resolutions])
     
     plt.tight_layout()
     _save_figure(fig, outdir, "speedup_vs_resolution")
@@ -268,13 +275,16 @@ def plot_transfer_overhead(df, outdir):
     
     colors = {"grayscale": "#1e88e5", "negative": "#fb8c00", "gaussian_blur": "#43a047"}
     
+    resolutions = sorted(df_best["resolution"].unique())
+    x_positions = list(range(len(resolutions)))
+    
     for flt in sorted(df_best["filter"].unique()):
         fdf = df_best[df_best["filter"] == flt].sort_values("resolution")
         
         transfer_pct = (fdf["gpu_h2d_ms"] + fdf["gpu_d2h_ms"]) / fdf["gpu_total_ms"] * 100
         
         ax.plot(
-            fdf["resolution"],
+            x_positions,
             transfer_pct,
             marker="o",
             linewidth=2,
@@ -292,10 +302,10 @@ def plot_transfer_overhead(df, outdir):
     
     # Add reference line at 50%
     ax.axhline(50, color="gray", linestyle=":", alpha=0.5, linewidth=1)
-    ax.text(df["resolution"].min(), 52, "50% (memory-bound)", fontsize=9, color="gray")
+    ax.text(0, 52, "50% (memory-bound)", fontsize=9, color="gray")
 
-    ax.set_xticks(sorted(df_best["resolution"].unique()))
-    ax.set_xticklabels([f"{r}²" for r in sorted(df_best["resolution"].unique())])
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels([f"{r}²" for r in resolutions])
     
     plt.tight_layout()
     _save_figure(fig, outdir, "transfer_overhead")
@@ -314,11 +324,14 @@ def plot_bandwidth(df, outdir):
     
     colors = {"grayscale": "#1e88e5", "negative": "#fb8c00", "gaussian_blur": "#43a047"}
     
+    resolutions = sorted(df_best["resolution"].unique())
+    x_positions = list(range(len(resolutions)))
+    
     for flt in sorted(df_best["filter"].unique()):
         fdf = df_best[df_best["filter"] == flt].sort_values("resolution")
         
         ax.plot(
-            fdf["resolution"],
+            x_positions,
             fdf["bandwidth_gb_s"],
             marker="o",
             linewidth=2,
@@ -333,8 +346,8 @@ def plot_bandwidth(df, outdir):
     ax.legend(fontsize=11)
     ax.grid(True, alpha=0.3)
 
-    ax.set_xticks(sorted(df_best["resolution"].unique()))
-    ax.set_xticklabels([f"{r}²" for r in sorted(df_best["resolution"].unique())])
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels([f"{r}²" for r in resolutions])
     
     plt.tight_layout()
     _save_figure(fig, outdir, "bandwidth")
@@ -356,15 +369,16 @@ def plot_absolute_times(df, outdir):
     fdf = df_best[df_best["filter"] == flt].sort_values("resolution")
     
     resolutions = fdf["resolution"].values
+    x_positions = list(range(len(resolutions)))
     cpu_single = fdf["cpu_single_ms"].values
     cpu_omp = fdf["cpu_omp_ms"].values
     gpu_total = fdf["gpu_total_ms"].values
     
-    ax.plot(resolutions, cpu_single, marker="s", linewidth=2, markersize=8, 
+    ax.plot(x_positions, cpu_single, marker="s", linewidth=2, markersize=8, 
             label="CPU Single-threaded", color="#e53935")
-    ax.plot(resolutions, cpu_omp, marker="^", linewidth=2, markersize=8,
+    ax.plot(x_positions, cpu_omp, marker="^", linewidth=2, markersize=8,
             label="CPU OpenMP (32 threads)", color="#fb8c00")
-    ax.plot(resolutions, gpu_total, marker="o", linewidth=2, markersize=8,
+    ax.plot(x_positions, gpu_total, marker="o", linewidth=2, markersize=8,
             label="GPU (AMD RX 6900 XT)", color="#43a047")
     
     ax.set_xlabel("Resolution (pixels per side)", fontsize=12)
@@ -375,7 +389,7 @@ def plot_absolute_times(df, outdir):
     ax.legend(fontsize=11)
     ax.grid(True, alpha=0.3, which="both")
 
-    ax.set_xticks(resolutions)
+    ax.set_xticks(x_positions)
     ax.set_xticklabels([f"{int(r)}²" for r in resolutions])
     
     plt.tight_layout()
@@ -396,7 +410,8 @@ def plot_batch_size_scaling(df, outdir):
     axes = axes.flatten()
     
     markers = {512: "o", 1024: "s", 2048: "^", 4096: "D"}
-    batch_ticks = sorted(df["batch_size"].unique().tolist())
+    batch_sizes = sorted(df["batch_size"].unique().tolist())
+    batch_positions = list(range(len(batch_sizes)))
     
     filters = sorted(df["filter"].unique())
     
@@ -408,8 +423,11 @@ def plot_batch_size_scaling(df, outdir):
         for res in sorted(fdf["resolution"].unique()):
             rdf = fdf[fdf["resolution"] == res].sort_values("batch_size")
             
+            # Map batch_size values to positions
+            x_vals = [batch_positions[batch_sizes.index(bs)] for bs in rdf["batch_size"]]
+            
             ax.plot(
-                rdf["batch_size"],
+                x_vals,
                 rdf["gpu_total_ms"],
                 marker=markers.get(res, "o"),
                 linewidth=2,
@@ -423,9 +441,8 @@ def plot_batch_size_scaling(df, outdir):
         ax.set_title(f"{flt.replace('_', ' ').title()} - Total Time", fontsize=13, fontweight="bold")
         ax.legend(fontsize=10, title="Resolution", loc="best")
         ax.grid(True, alpha=0.3)
-        ax.set_xscale("log", base=2)
-        ax.set_xticks(batch_ticks)
-        ax.get_xaxis().set_major_formatter(plt.ScalarFormatter())
+        ax.set_xticks(batch_positions)
+        ax.set_xticklabels([str(bs) for bs in batch_sizes])
     
     # Plot 4-6: Speedup vs OpenMP vs Batch Size (one per filter)
     for idx, flt in enumerate(filters):
@@ -435,8 +452,11 @@ def plot_batch_size_scaling(df, outdir):
         for res in sorted(fdf["resolution"].unique()):
             rdf = fdf[fdf["resolution"] == res].sort_values("batch_size")
             
+            # Map batch_size values to positions
+            x_vals = [batch_positions[batch_sizes.index(bs)] for bs in rdf["batch_size"]]
+            
             ax.plot(
-                rdf["batch_size"],
+                x_vals,
                 rdf["speedup_vs_omp"],
                 marker=markers.get(res, "o"),
                 linewidth=2,
@@ -451,9 +471,8 @@ def plot_batch_size_scaling(df, outdir):
         ax.set_title(f"{flt.replace('_', ' ').title()} - Speedup", fontsize=13, fontweight="bold")
         ax.legend(fontsize=10, title="Resolution", loc="best")
         ax.grid(True, alpha=0.3)
-        ax.set_xscale("log", base=2)
-        ax.set_xticks(batch_ticks)
-        ax.get_xaxis().set_major_formatter(plt.ScalarFormatter())
+        ax.set_xticks(batch_positions)
+        ax.set_xticklabels([str(bs) for bs in batch_sizes])
     
     plt.suptitle("Batch Size Scaling Analysis: Performance vs Batch Size", fontsize=18, fontweight="bold", y=0.995)
     plt.tight_layout()

@@ -3,26 +3,49 @@
 [![AMD ROCm](https://img.shields.io/badge/AMD-ROCm-red)]()
 [![HIP](https://img.shields.io/badge/HIP-C%2B%2B20-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-green)]()
+[![Version](https://img.shields.io/badge/version-0.2.0-orange)]()
 
-GPU-accelerated image processing framework demonstrating real-world HIP performance engineering principles.
+GPU-accelerated image processing framework with **production-ready autotuning** for optimal kernel configurations.
 
-This project showcases production-grade GPU optimization through empirical measurement and data-driven architectural decisions. Through extensive benchmarking across 60 configurations, we validated a **batch processing architecture** that delivers optimal throughput for compute-intensive workloads. The framework demonstrates fine-grained profiling, honest performance analysis, and the value of measuring rather than assuming.
+This project showcases production-grade GPU optimization through empirical measurement and automated tuning. The framework features a comprehensive **autotuning system** that automatically discovers optimal kernel configurations for your specific GPU, plus fine-grained profiling and honest performance analysis.
 
-**Performance Highlight**: Achieves **577× speedup** on Gaussian blur vs single-threaded CPU and **41.8× vs OpenMP** (32 threads) on AMD Radeon RX 6900 XT
+**Key Features**:
+- 🚀 **Automatic GPU tuning**: Zero-configuration optimal block sizes per GPU
+- ⚡ **Performance**: 577× speedup on Gaussian blur vs single-threaded CPU
+- 📊 **Data-driven**: Validated through 60+ benchmark configurations  
+- 🔧 **Production-ready**: Installable headers, pkg-config support, stable API
+- 🎯 **Type-safe**: C++20 concepts enforce correct usage at compile-time
 
-**Architecture**: Configurable batch processing with synchronous execution pipeline
+**[→ See Complete Documentation](docs/README.md)**
 
-**Full Results**: See [Benchmark Results](docs/BENCHMARK_RESULTS.md) for comprehensive performance analysis
+## Autotuning Framework
+
+The autotuning system automatically finds the fastest GPU kernel configuration for your hardware:
+
+```bash
+# First run: autotuning (~100-200ms overhead)
+./build/hip-img-fx --input photo.jpg --output result.jpg --filter grayscale
+# Output: [AutoTune] Benchmarking... Selected [16x8] (0.034ms)
+
+# Subsequent runs: cached (zero overhead)  
+./build/hip-img-fx --input photo.jpg --output result.jpg --filter grayscale
+# Output: [AutoTune] Using cached [16x8]
+```
+
+**Performance impact**: 12-18% faster than default configurations  
+**Learn more**: [Autotuning Guide](docs/AUTOTUNING_GUIDE.md)
 
 ## Performance Engineering Focus
 
 This repository demonstrates:
 
+- **Automatic GPU Tuning**: Self-optimizing kernels via empirical benchmarking
 - **GPU Profiling**: Fine-grained timing with HIP events (H2D, kernel, D2H breakdown)
 - **Memory Analysis**: Bandwidth utilization and transfer overhead measurement
 - **Data-Driven Decisions**: Extensive benchmarking (60 configurations) to validate architectural choices
 - **Reproducible Benchmarking**: Production-quality harness with statistical analysis
-- **Honest Performance Reporting**: Documenting both successes (577× speedup) and limitations (GPU slower than CPU for simple filters)
+- **Honest Performance Reporting**: Documenting both successes (577× speedup) and limitations
+- **Type Safety**: C++20 concepts enforce correct kernel integration at compile-time
 
 ## Performance Characteristics
 
@@ -372,6 +395,7 @@ This project demonstrates:
    - Batch processing with contiguous memory allocation
 
 2. **GPU Performance Engineering**
+   - Automated kernel configuration tuning
    - Identifying memory-bound vs compute-bound kernels
    - Analyzing bandwidth utilization
    - Optimizing memory access patterns (coalescing)
@@ -384,6 +408,55 @@ This project demonstrates:
    - Performance regression detection
    - Clear documentation of optimization tradeoffs
    - Data-driven architectural decisions
+   - Type-safe APIs with C++20 concepts
+
+
+## Using as a Library
+
+HIP Image FX provides a production-ready autotuning framework for custom HIP kernels.
+
+### Installation
+
+```bash
+meson setup build
+meson install -C build
+```
+
+Headers install to `${PREFIX}/include/hip-img-fx/autotune/`
+
+### Integration
+
+```cpp
+#include <hip-img-fx/autotune/orchestrator.h>
+
+// Define your kernel traits
+struct MyKernelTraits {
+    static constexpr const char* name() { return "my_kernel"; }
+    
+    struct Args { /* kernel arguments */ };
+    struct Context { /* cache key */ };
+    
+    static std::vector<TuningConfig> generate_candidates(const Context&);
+    static bool is_valid_config(const TuningConfig&, const Args&);
+    static void launch(const TuningConfig&, const Args&, hipStream_t);
+};
+
+// Use TuningOrchestrator
+static TuningOrchestrator<MyKernelTraits> orchestrator;
+orchestrator.launch_tuned(context, args, stream);
+```
+
+**Complete guide**: [Autotuning Framework Documentation](docs/AUTOTUNING_GUIDE.md)
+
+### Pkg-config Support
+
+```bash
+# Get compiler flags
+pkg-config --cflags hip-img-fx
+
+# In your build system
+g++ $(pkg-config --cflags hip-img-fx) mykernel.cpp
+```
 
 
 ## Future Work
@@ -409,10 +482,10 @@ This project demonstrates:
 
 ### Research Directions
 
-- **Auto-tuning**: Grid search for optimal block sizes and batch sizes per GPU
 - **Warp-level primitives**: Use shuffle intrinsics for reduction operations
 - **Texture memory**: Test performance with texture cache for blur operations
 - **Async Streams**: Overlap H2D/kernel/D2H using HIP streams (requires careful benchmarking)
+- **Extended autotuning**: Context-aware tuning for more kernel parameters
 
 
 ## License

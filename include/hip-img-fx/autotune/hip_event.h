@@ -9,16 +9,16 @@
 
 // Helper macro for HIP error checking
 #ifndef HIP_ERRCHK
-#define HIP_ERRCHK(call)                                                    \
-    do                                                                      \
-    {                                                                       \
-        hipError_t err = call;                                              \
-        if (err != hipSuccess)                                              \
-        {                                                                   \
-            fprintf(stderr, "HIP error at %s:%d: %s\n",                     \
-                    __FILE__, __LINE__, hipGetErrorString(err));            \
-            exit(EXIT_FAILURE);                                             \
-        }                                                                   \
+#define HIP_ERRCHK(call)                                         \
+    do                                                           \
+    {                                                            \
+        hipError_t err = call;                                   \
+        if (err != hipSuccess)                                   \
+        {                                                        \
+            fprintf(stderr, "HIP error at %s:%d: %s\n",          \
+                    __FILE__, __LINE__, hipGetErrorString(err)); \
+            exit(EXIT_FAILURE);                                  \
+        }                                                        \
     } while (0)
 #endif
 

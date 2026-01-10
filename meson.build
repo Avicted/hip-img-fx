@@ -22,18 +22,14 @@ app_src = files(
   'src/app/process.cpp',
   'src/cli/cli_parser.cpp',
   'src/core/gpu_utils.cpp',
-  'src/core/autotuning.cpp',
   'src/core/image.cpp',
   'src/core/autotune/tuning_config.cpp',
   'src/core/autotune/cache_store.cpp',
   'src/filters/grayscale.hip.cpp',
-  'src/filters/grayscale_autotune.hip.cpp',
   'src/filters/grayscale_autotune_v2.hip.cpp',
   'src/filters/negative.hip.cpp',
-  'src/filters/negative_autotune.hip.cpp',
   'src/filters/negative_autotune_v2.hip.cpp',
   'src/filters/gaussian_blur.hip.cpp',
-  'src/filters/gaussian_blur_autotune.hip.cpp',
   'src/filters/gaussian_blur_autotune_v2.hip.cpp',
 )
 
@@ -55,18 +51,14 @@ executable(
 bench_src = files(
   'bench/run_bench.cpp',
   'src/core/gpu_utils.cpp',
-  'src/core/autotuning.cpp',
   'src/core/image.cpp',
   'src/core/autotune/tuning_config.cpp',
   'src/core/autotune/cache_store.cpp',
   'src/filters/grayscale.hip.cpp',
-  'src/filters/grayscale_autotune.hip.cpp',
   'src/filters/grayscale_autotune_v2.hip.cpp',
   'src/filters/negative.hip.cpp',
-  'src/filters/negative_autotune.hip.cpp',
   'src/filters/negative_autotune_v2.hip.cpp',
   'src/filters/gaussian_blur.hip.cpp',
-  'src/filters/gaussian_blur_autotune.hip.cpp',
   'src/filters/gaussian_blur_autotune_v2.hip.cpp',
 )
 
@@ -83,11 +75,9 @@ executable(
 validate_src = files(
   'bench/validate_grayscale_migration.cpp',
   'src/core/gpu_utils.cpp',
-  'src/core/autotuning.cpp',
   'src/core/autotune/tuning_config.cpp',
   'src/core/autotune/cache_store.cpp',
   'src/filters/grayscale.hip.cpp',
-  'src/filters/grayscale_autotune.hip.cpp',
   'src/filters/grayscale_autotune_v2.hip.cpp',
 )
 
@@ -104,11 +94,9 @@ executable(
 benchmark_migration_src = files(
   'bench/benchmark_grayscale_migration.cpp',
   'src/core/gpu_utils.cpp',
-  'src/core/autotuning.cpp',
   'src/core/autotune/tuning_config.cpp',
   'src/core/autotune/cache_store.cpp',
   'src/filters/grayscale.hip.cpp',
-  'src/filters/grayscale_autotune.hip.cpp',
   'src/filters/grayscale_autotune_v2.hip.cpp',
 )
 
@@ -125,14 +113,12 @@ executable(
 tier1_test_src = files(
   'bench/test_tier1_improvements.cpp',
   'src/core/gpu_utils.cpp',
-  'src/core/autotuning.cpp',
   'src/core/autotune/tuning_config.cpp',
   'src/core/autotune/cache_store.cpp',
   'src/filters/grayscale.hip.cpp',
-  'src/filters/grayscale_autotune.hip.cpp',
   'src/filters/grayscale_autotune_v2.hip.cpp',
   'src/filters/negative.hip.cpp',
-  'src/filters/negative_autotune.hip.cpp',
+  'src/filters/negative_autotune_v2.hip.cpp',
 )
 
 executable(

@@ -1,6 +1,6 @@
 /**
  * @file benchmark_grayscale_migration.cpp
- * @brief Detailed performance benchmark for grayscale migration
+ * @brief Performance benchmark for grayscale autotuned implementation
  */
 
 #include <iostream>
@@ -9,7 +9,6 @@
 #include <hip/hip_runtime.h>
 
 #include "../src/core/gpu_utils.h"
-#include "../src/core/autotuning.h"
 #include "../src/filters/filters.h"
 
 #define HIP_CHECK(call)                                                 \
@@ -49,32 +48,13 @@ void benchmark_cached_performance(int width, int height, int channels, int itera
     hipStream_t stream;
     HIP_CHECK(hipStreamCreate(&stream));
 
-    // Initialize autotuner
-    imgfx::core::AutoTuner old_tuner;
-
-    // Warm up both implementations
-    imgfx::filters::apply_grayscale_autotuned(
-        d_input, d_output, d_metas, 1, bytes, old_tuner, stream);
-    HIP_CHECK(hipStreamSynchronize(stream));
-
+    // Warm up
     imgfx::filters::apply_grayscale_autotuned_v2(
         d_input, d_output, d_metas, 1, bytes, stream);
     HIP_CHECK(hipStreamSynchronize(stream));
 
-    // Benchmark OLD implementation
-    std::vector<double> old_times;
-    for (int i = 0; i < iterations; i++)
-    {
-        auto start = high_resolution_clock::now();
-        imgfx::filters::apply_grayscale_autotuned(
-            d_input, d_output, d_metas, 1, bytes, old_tuner, stream);
-        HIP_CHECK(hipStreamSynchronize(stream));
-        auto end = high_resolution_clock::now();
-        old_times.push_back(duration<double, std::milli>(end - start).count());
-    }
-
-    // Benchmark NEW implementation
-    std::vector<double> new_times;
+    // Benchmark implementation
+    std::vector<double> times;
     for (int i = 0; i < iterations; i++)
     {
         auto start = high_resolution_clock::now();
@@ -82,46 +62,32 @@ void benchmark_cached_performance(int width, int height, int channels, int itera
             d_input, d_output, d_metas, 1, bytes, stream);
         HIP_CHECK(hipStreamSynchronize(stream));
         auto end = high_resolution_clock::now();
-        new_times.push_back(duration<double, std::milli>(end - start).count());
+        times.push_back(duration<double, std::milli>(end - start).count());
     }
 
     // Calculate statistics
-    auto calc_stats = [](const std::vector<double> &times)
+    double sum = 0, min = times[0], max = times[0];
+    for (double t : times)
     {
-        double sum = 0, min = times[0], max = times[0];
-        for (double t : times)
-        {
-            sum += t;
-            if (t < min)
-                min = t;
-            if (t > max)
-                max = t;
-        }
-        double avg = sum / times.size();
+        sum += t;
+        if (t < min)
+            min = t;
+        if (t > max)
+            max = t;
+    }
+    double avg = sum / times.size();
 
-        double var_sum = 0;
-        for (double t : times)
-        {
-            var_sum += (t - avg) * (t - avg);
-        }
-        double stddev = sqrt(var_sum / times.size());
-
-        return std::make_tuple(avg, stddev, min, max);
-    };
-
-    auto [old_avg, old_std, old_min, old_max] = calc_stats(old_times);
-    auto [new_avg, new_std, new_min, new_max] = calc_stats(new_times);
+    double var_sum = 0;
+    for (double t : times)
+    {
+        var_sum += (t - avg) * (t - avg);
+    }
+    double stddev = sqrt(var_sum / times.size());
 
     std::cout << "\n"
               << width << "x" << height << " (" << bytes << " bytes)\n";
-    std::cout << "  OLD: " << old_avg << " ± " << old_std << " ms "
-              << "(min: " << old_min << ", max: " << old_max << ")\n";
-    std::cout << "  NEW: " << new_avg << " ± " << new_std << " ms "
-              << "(min: " << new_min << ", max: " << new_max << ")\n";
-
-    double improvement = (old_avg - new_avg) / old_avg * 100.0;
-    std::cout << "  Improvement: " << (improvement >= 0 ? "+" : "")
-              << improvement << "%\n";
+    std::cout << "  Time: " << avg << " ± " << stddev << " ms "
+              << "(min: " << min << ", max: " << max << ")\n";
 
     // Cleanup
     HIP_CHECK(hipFree(d_input));
@@ -132,9 +98,9 @@ void benchmark_cached_performance(int width, int height, int channels, int itera
 
 int main()
 {
-    std::cout << "=======================================================\n";
-    std::cout << "  Grayscale Migration - Detailed Performance Benchmark\n";
-    std::cout << "=======================================================\n";
+    std::cout << "================================================\n";
+    std::cout << "  Grayscale Autotuned Performance Benchmark\n";
+    std::cout << "================================================\n";
 
     const int iterations = 100;
 
@@ -149,7 +115,7 @@ int main()
     benchmark_cached_performance(2048, 1536, 3, iterations);
     benchmark_cached_performance(4096, 3072, 3, iterations);
 
-    std::cout << "\n=======================================================\n";
+    std::cout << "\n================================================\n";
 
     return 0;
 }

@@ -16,7 +16,6 @@
 #include <hip/hip_runtime.h>
 
 #include "../src/core/gpu_utils.h"
-#include "../src/core/autotuning.h"
 #include "../src/filters/filters.h"
 
 #define HIP_CHECK(call)                                                     \
@@ -98,61 +97,32 @@ TestResults run_comparison_test(const TestImage &img, const std::string &size_ca
     hipStream_t stream;
     HIP_CHECK(hipStreamCreate(&stream));
 
-    // Initialize old autotuner
-    imgfx::core::AutoTuner old_tuner;
+    // NOTE: Old AutoTuner-based implementation removed in v1.0
+    // This test now only validates the new implementation
 
     std::cout << "\n=== Testing " << size_category << " image ("
               << img.width << "x" << img.height << ", " << img.bytes() << " bytes) ===\n";
 
     // ========================================================================
-    // Test 1: OLD implementation (COLD - first run with fresh tuner)
-    // ========================================================================
-    std::cout << "Running OLD implementation (cold)... " << std::flush;
-    auto start = high_resolution_clock::now();
-
-    imgfx::filters::apply_grayscale_autotuned(
-        d_input, d_output_old, d_metas, 1, img.bytes(), old_tuner, stream);
-
-    HIP_CHECK(hipStreamSynchronize(stream));
-    auto end = high_resolution_clock::now();
-    results.old_time_cold_ms = duration<double, std::milli>(end - start).count();
-    std::cout << results.old_time_cold_ms << " ms\n";
-
-    // ========================================================================
-    // Test 2: OLD implementation (WARM - cached configuration)
-    // ========================================================================
-    std::cout << "Running OLD implementation (warm)... " << std::flush;
-    start = high_resolution_clock::now();
-
-    imgfx::filters::apply_grayscale_autotuned(
-        d_input, d_output_old, d_metas, 1, img.bytes(), old_tuner, stream);
-
-    HIP_CHECK(hipStreamSynchronize(stream));
-    end = high_resolution_clock::now();
-    results.old_time_warm_ms = duration<double, std::milli>(end - start).count();
-    std::cout << results.old_time_warm_ms << " ms (speedup: "
-              << (results.old_time_cold_ms / results.old_time_warm_ms) << "x)\n";
-
-    // ========================================================================
-    // Test 3: NEW implementation (COLD - force retune by deleting cache)
+    // Test 1: NEW implementation (COLD - force retune by deleting cache)
     // ========================================================================
     std::cout << "Running NEW implementation (cold)... " << std::flush;
 
     // Delete cache file to force retuning
     system("rm -f .autotune_cache.json");
 
-    start = high_resolution_clock::now();
+    auto start = high_resolution_clock::now();
 
     imgfx::filters::apply_grayscale_autotuned_v2(
         d_input, d_output_new, d_metas, 1, img.bytes(), stream);
 
     HIP_CHECK(hipStreamSynchronize(stream));
-    end = high_resolution_clock::now();
+    auto end = high_resolution_clock::now();
     results.new_time_cold_ms = duration<double, std::milli>(end - start).count();
     std::cout << results.new_time_cold_ms << " ms\n";
 
     // ========================================================================
-    // Test 4: NEW implementation (WARM - from cache)
+    // Test 2: NEW implementation (WARM - from cache)
     // ========================================================================
     std::cout << "Running NEW implementation (warm)... " << std::flush;
     start = high_resolution_clock::now();
@@ -167,9 +137,14 @@ TestResults run_comparison_test(const TestImage &img, const std::string &size_ca
               << (results.new_time_cold_ms / results.new_time_warm_ms) << "x)\n";
 
     // ========================================================================
-    // Test 5: Output equivalence
+    // Test 3: Consistency check (run again, output should be identical)
     // ========================================================================
     std::cout << "Comparing outputs... " << std::flush;
+
+    // Run again to get second output
+    imgfx::filters::apply_grayscale_autotuned_v2(
+        d_input, d_output_old, d_metas, 1, img.bytes(), stream);
+    HIP_CHECK(hipStreamSynchronize(stream));
 
     std::vector<unsigned char> h_output_old(img.bytes());
     std::vector<unsigned char> h_output_new(img.bytes());

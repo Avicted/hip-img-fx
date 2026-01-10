@@ -21,7 +21,6 @@
 #include <cstdio>
 
 #include "../src/core/gpu_utils.h"
-#include "../src/core/autotuning.h"
 #include "../src/filters/filters.h"
 #include "../src/core/autotune/orchestrator.h"
 #include "../src/core/autotune/types.h"
@@ -157,13 +156,13 @@ void test_early_exit()
     std::cout << "\nTesting with early-exit ENABLED (default)...\n";
     auto start = high_resolution_clock::now();
 
-    // Initialize AutoTuner for old API
-    imgfx::core::AutoTuner tuner;
+    // NOTE: Old AutoTuner-based API removed in v1.0
+    // This test now uses the new v2 API with TuningOrchestrator
 
     // This will tune negative kernel (not in embedded cache)
     // Early-exit should reduce tuning time
-    imgfx::filters::apply_negative_autotuned(
-        d_input, d_output, d_metas, 1, bytes, tuner, stream);
+    imgfx::filters::apply_negative_autotuned_v2(
+        d_input, d_output, d_metas, 1, bytes, stream);
 
     HIP_CHECK(hipStreamSynchronize(stream));
     auto end = high_resolution_clock::now();

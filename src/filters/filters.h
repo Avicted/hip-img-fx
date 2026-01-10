@@ -7,12 +7,6 @@
 #include "../core/gpu_utils.h"
 #include "../core/autotune/tuning_config.h"
 
-// Forward declaration to avoid circular dependency
-namespace imgfx::core
-{
-    class AutoTuner;
-}
-
 namespace imgfx::filters
 {
     extern "C" __global__ void grayscale_kernel(
@@ -55,35 +49,6 @@ namespace imgfx::filters
         int width,
         int height,
         int channels);
-
-    // Autotuned kernel launches
-    void apply_grayscale_autotuned(
-        const unsigned char *input,
-        unsigned char *output,
-        const imgfx::core::image_meta_t *metas,
-        int num_images,
-        size_t max_image_bytes,
-        imgfx::core::AutoTuner &autotuner,
-        hipStream_t stream);
-
-    void apply_negative_autotuned(
-        const unsigned char *input,
-        unsigned char *output,
-        const imgfx::core::image_meta_t *metas,
-        int num_images,
-        size_t max_image_bytes,
-        imgfx::core::AutoTuner &autotuner,
-        hipStream_t stream);
-
-    void apply_gaussian_blur_autotuned(
-        const unsigned char *input,
-        unsigned char *output,
-        const imgfx::core::image_meta_t *metas,
-        int num_images,
-        size_t max_image_bytes,
-        int blur_amount,
-        imgfx::core::AutoTuner &autotuner,
-        hipStream_t stream);
 
     // ========================================================================
     // NEW AUTOTUNING FRAMEWORK (Phase 2a)

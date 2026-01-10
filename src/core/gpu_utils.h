@@ -13,12 +13,6 @@
 #include "image.h"
 #include "../filters/filters.h"
 
-// Forward declaration
-namespace imgfx::core
-{
-    class AutoTuner;
-}
-
 namespace imgfx::core
 {
     constexpr int GAUSSIAN_BLUR_AMOUNT = 11; // Must be odd
@@ -195,9 +189,6 @@ namespace imgfx::core
     int get_hip_devices() noexcept;
 
     std::string filter_type_to_string(FILTER_TYPE type);
-
-    // Get global autotuner instance
-    AutoTuner &get_autotuner();
 
     hipError_t apply_filter_cpu(
         FILTER_TYPE filter_type,

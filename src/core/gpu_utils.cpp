@@ -1,24 +1,7 @@
 #include "gpu_utils.h"
-#include "autotuning.h"
 
 namespace imgfx::core
 {
-    // Global autotuner instance (initialized on first use)
-    AutoTuner &get_autotuner()
-    {
-        static AutoTuner instance;
-        static bool initialized = false;
-
-        if (!initialized)
-        {
-            // Try to load cache on first use
-            instance.load_cache();
-            initialized = true;
-        }
-
-        return instance;
-    }
-
     int get_hip_devices(void) noexcept
     {
         int deviceCount = 0;

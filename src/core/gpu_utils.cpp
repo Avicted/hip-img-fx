@@ -190,8 +190,8 @@ namespace imgfx::core
         {
         case FILTER_TYPE::GRAYSCALE:
         {
-            // Use NEW autotuned grayscale kernel (v2 - TuningOrchestrator)
-            imgfx::filters::apply_grayscale_autotuned_v2(
+            // Use autotuned grayscale kernel
+            imgfx::filters::apply_grayscale_autotuned(
                 (unsigned char *)d_input.ptr,
                 (unsigned char *)d_output.ptr,
                 (image_meta_t *)d_metas.ptr,
@@ -202,8 +202,8 @@ namespace imgfx::core
         }
         case FILTER_TYPE::NEGATIVE:
         {
-            // Use NEW autotuned negative kernel (v2 - TuningOrchestrator)
-            imgfx::filters::apply_negative_autotuned_v2(
+            // Use autotuned negative kernel
+            imgfx::filters::apply_negative_autotuned(
                 (unsigned char *)d_input.ptr,
                 (unsigned char *)d_output.ptr,
                 (image_meta_t *)d_metas.ptr,
@@ -220,8 +220,8 @@ namespace imgfx::core
                 return hipErrorInvalidValue;
             }
 
-            // Use NEW autotuned gaussian_blur kernel (v2 - TuningOrchestrator)
-            imgfx::filters::apply_gaussian_blur_autotuned_v2(
+            // Use autotuned gaussian_blur kernel
+            imgfx::filters::apply_gaussian_blur_autotuned(
                 (unsigned char *)d_input.ptr,
                 (unsigned char *)d_output.ptr,
                 (image_meta_t *)d_metas.ptr,

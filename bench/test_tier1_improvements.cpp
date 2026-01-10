@@ -78,7 +78,7 @@ void test_embedded_cache()
     auto start = high_resolution_clock::now();
 
     // This should use embedded cache for gfx1030/grayscale_v2/large
-    imgfx::filters::apply_grayscale_autotuned_v2(
+    imgfx::filters::apply_grayscale_autotuned(
         d_input, d_output, d_metas, 1, bytes, stream);
 
     HIP_CHECK(hipStreamSynchronize(stream));
@@ -161,7 +161,7 @@ void test_early_exit()
 
     // This will tune negative kernel (not in embedded cache)
     // Early-exit should reduce tuning time
-    imgfx::filters::apply_negative_autotuned_v2(
+    imgfx::filters::apply_negative_autotuned(
         d_input, d_output, d_metas, 1, bytes, stream);
 
     HIP_CHECK(hipStreamSynchronize(stream));

@@ -15,7 +15,7 @@ namespace imgfx::filters
      * @param max_image_bytes Maximum image size in bytes
      * @param stream HIP stream for kernel execution
      */
-    void apply_negative_autotuned_v2(
+    void apply_negative_autotuned(
         const unsigned char *input,
         unsigned char *output,
         const imgfx::core::image_meta_t *metas,

@@ -51,18 +51,18 @@ namespace imgfx::filters
         int channels);
 
     // ========================================================================
-    // NEW AUTOTUNING FRAMEWORK (Phase 2a)
+    // AUTOTUNING FRAMEWORK
     // ========================================================================
 
     /**
-     * @brief Kernel traits for grayscale filter (new autotuning framework)
+     * @brief Kernel traits for grayscale filter
      *
-     * Implements the traits-based interface for the new TuningOrchestrator.
+     * Implements the traits-based interface for TuningOrchestrator.
      */
     struct GrayscaleKernelTraits
     {
         // 1. Kernel name (unique identifier for caching)
-        static constexpr const char *name() { return "grayscale_v2"; }
+        static constexpr const char *name() { return "grayscale"; }
 
         // 2. Kernel launch arguments (type-safe container)
         struct Args
@@ -174,7 +174,7 @@ namespace imgfx::filters
      */
     struct NegativeKernelTraits
     {
-        static constexpr const char *name() { return "negative_v2"; }
+        static constexpr const char *name() { return "negative"; }
 
         struct Args
         {
@@ -273,7 +273,7 @@ namespace imgfx::filters
      */
     struct GaussianBlurKernelTraits
     {
-        static constexpr const char *name() { return "gaussian_blur_v2"; }
+        static constexpr const char *name() { return "gaussian_blur"; }
 
         struct Args
         {
@@ -380,9 +380,9 @@ namespace imgfx::filters
     // ========================================================================
 
     /**
-     * @brief Apply grayscale filter using new autotuning framework
+     * @brief Apply grayscale filter using autotuning framework
      */
-    void apply_grayscale_autotuned_v2(
+    void apply_grayscale_autotuned(
         const unsigned char *input,
         unsigned char *output,
         const imgfx::core::image_meta_t *metas,
@@ -391,9 +391,9 @@ namespace imgfx::filters
         hipStream_t stream);
 
     /**
-     * @brief Apply negative filter using new autotuning framework
+     * @brief Apply negative filter using autotuning framework
      */
-    void apply_negative_autotuned_v2(
+    void apply_negative_autotuned(
         const unsigned char *input,
         unsigned char *output,
         const imgfx::core::image_meta_t *metas,
@@ -404,7 +404,7 @@ namespace imgfx::filters
     /**
      * @brief Apply Gaussian blur filter using new autotuning framework
      */
-    void apply_gaussian_blur_autotuned_v2(
+    void apply_gaussian_blur_autotuned(
         const unsigned char *input,
         unsigned char *output,
         const imgfx::core::image_meta_t *metas,

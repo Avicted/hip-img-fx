@@ -113,7 +113,7 @@ TestResults run_comparison_test(const TestImage &img, const std::string &size_ca
 
     auto start = high_resolution_clock::now();
 
-    imgfx::filters::apply_grayscale_autotuned_v2(
+    imgfx::filters::apply_grayscale_autotuned(
         d_input, d_output_new, d_metas, 1, img.bytes(), stream);
 
     HIP_CHECK(hipStreamSynchronize(stream));
@@ -127,7 +127,7 @@ TestResults run_comparison_test(const TestImage &img, const std::string &size_ca
     std::cout << "Running NEW implementation (warm)... " << std::flush;
     start = high_resolution_clock::now();
 
-    imgfx::filters::apply_grayscale_autotuned_v2(
+    imgfx::filters::apply_grayscale_autotuned(
         d_input, d_output_new, d_metas, 1, img.bytes(), stream);
 
     HIP_CHECK(hipStreamSynchronize(stream));
@@ -142,7 +142,7 @@ TestResults run_comparison_test(const TestImage &img, const std::string &size_ca
     std::cout << "Comparing outputs... " << std::flush;
 
     // Run again to get second output
-    imgfx::filters::apply_grayscale_autotuned_v2(
+    imgfx::filters::apply_grayscale_autotuned(
         d_input, d_output_old, d_metas, 1, img.bytes(), stream);
     HIP_CHECK(hipStreamSynchronize(stream));
 

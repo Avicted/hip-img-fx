@@ -49,7 +49,7 @@ void benchmark_cached_performance(int width, int height, int channels, int itera
     HIP_CHECK(hipStreamCreate(&stream));
 
     // Warm up
-    imgfx::filters::apply_grayscale_autotuned_v2(
+    imgfx::filters::apply_grayscale_autotuned(
         d_input, d_output, d_metas, 1, bytes, stream);
     HIP_CHECK(hipStreamSynchronize(stream));
 
@@ -58,7 +58,7 @@ void benchmark_cached_performance(int width, int height, int channels, int itera
     for (int i = 0; i < iterations; i++)
     {
         auto start = high_resolution_clock::now();
-        imgfx::filters::apply_grayscale_autotuned_v2(
+        imgfx::filters::apply_grayscale_autotuned(
             d_input, d_output, d_metas, 1, bytes, stream);
         HIP_CHECK(hipStreamSynchronize(stream));
         auto end = high_resolution_clock::now();

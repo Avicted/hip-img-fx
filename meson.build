@@ -25,11 +25,11 @@ app_src = files(
   'src/core/autotune/tuning_config.cpp',
   'src/core/autotune/cache_store.cpp',
   'src/filters/grayscale.hip.cpp',
-  'src/filters/grayscale_autotune_v2.hip.cpp',
+  'src/filters/grayscale_autotune.hip.cpp',
   'src/filters/negative.hip.cpp',
-  'src/filters/negative_autotune_v2.hip.cpp',
+  'src/filters/negative_autotune.hip.cpp',
   'src/filters/gaussian_blur.hip.cpp',
-  'src/filters/gaussian_blur_autotune_v2.hip.cpp',
+  'src/filters/gaussian_blur_autotune.hip.cpp',
 )
 
 # RX 6900 XT; change as needed
@@ -54,11 +54,11 @@ bench_src = files(
   'src/core/autotune/tuning_config.cpp',
   'src/core/autotune/cache_store.cpp',
   'src/filters/grayscale.hip.cpp',
-  'src/filters/grayscale_autotune_v2.hip.cpp',
+  'src/filters/grayscale_autotune.hip.cpp',
   'src/filters/negative.hip.cpp',
-  'src/filters/negative_autotune_v2.hip.cpp',
+  'src/filters/negative_autotune.hip.cpp',
   'src/filters/gaussian_blur.hip.cpp',
-  'src/filters/gaussian_blur_autotune_v2.hip.cpp',
+  'src/filters/gaussian_blur_autotune.hip.cpp',
 )
 
 executable(
@@ -77,7 +77,7 @@ validate_src = files(
   'src/core/autotune/tuning_config.cpp',
   'src/core/autotune/cache_store.cpp',
   'src/filters/grayscale.hip.cpp',
-  'src/filters/grayscale_autotune_v2.hip.cpp',
+  'src/filters/grayscale_autotune.hip.cpp',
 )
 
 executable(
@@ -96,7 +96,7 @@ benchmark_migration_src = files(
   'src/core/autotune/tuning_config.cpp',
   'src/core/autotune/cache_store.cpp',
   'src/filters/grayscale.hip.cpp',
-  'src/filters/grayscale_autotune_v2.hip.cpp',
+  'src/filters/grayscale_autotune.hip.cpp',
 )
 
 executable(
@@ -115,9 +115,9 @@ tier1_test_src = files(
   'src/core/autotune/tuning_config.cpp',
   'src/core/autotune/cache_store.cpp',
   'src/filters/grayscale.hip.cpp',
-  'src/filters/grayscale_autotune_v2.hip.cpp',
+  'src/filters/grayscale_autotune.hip.cpp',
   'src/filters/negative.hip.cpp',
-  'src/filters/negative_autotune_v2.hip.cpp',
+  'src/filters/negative_autotune.hip.cpp',
 )
 
 executable(

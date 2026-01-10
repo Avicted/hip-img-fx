@@ -4,50 +4,45 @@
 namespace imgfx::filters
 {
     /**
-     * @brief Apply grayscale filter using new autotuning framework (v2)
+     * @brief Apply Gaussian blur filter using new autotuning framework (v2)
      *
-     * This implementation uses the new TuningOrchestrator with GrayscaleKernelTraits.
-     * It replaces the old AutoTuner-based implementation with a more maintainable
-     * and extensible approach.
-     *
-     * Key improvements:
-     * - Type-safe arguments through traits
-     * - Three-tier caching (thread-local, persistent, tuning)
-     * - Cleaner separation of concerns
-     * - Better testability
+     * This implementation uses the new TuningOrchestrator with GaussianBlurKernelTraits.
      *
      * @param input Device input buffer
      * @param output Device output buffer
      * @param metas Device metadata buffer
      * @param num_images Number of images in batch
      * @param max_image_bytes Maximum image size in bytes
+     * @param blur_amount Blur kernel radius (must be odd)
      * @param stream HIP stream for kernel execution
      */
-    void apply_grayscale_autotuned_v2(
+    void apply_gaussian_blur_autotuned(
         const unsigned char *input,
         unsigned char *output,
         const imgfx::core::image_meta_t *metas,
         int num_images,
         size_t max_image_bytes,
+        int blur_amount,
         hipStream_t stream)
     {
         using namespace imgfx::core::autotune;
 
         // Static orchestrator (initialized once per process)
-        // Cache is loaded on first use, saved on destruction
-        static TuningOrchestrator<GrayscaleKernelTraits> orchestrator;
+        static TuningOrchestrator<GaussianBlurKernelTraits> orchestrator;
 
         // Prepare kernel arguments
-        GrayscaleKernelTraits::Args args;
+        GaussianBlurKernelTraits::Args args;
         args.input = input;
         args.output = output;
         args.metas = metas;
         args.num_images = num_images;
         args.max_image_bytes = max_image_bytes;
+        args.blur_amount = blur_amount;
 
         // Prepare context for caching
-        GrayscaleKernelTraits::Context ctx;
+        GaussianBlurKernelTraits::Context ctx;
         ctx.image_bytes = max_image_bytes;
+        ctx.blur_amount = blur_amount;
 
         // Execute with optimal configuration (cached or autotuned)
         orchestrator.execute(args, ctx, stream);

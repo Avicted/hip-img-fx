@@ -1,4 +1,4 @@
-#include "tuning_config.h"
+#include "hip-img-fx/autotune/tuning_config.h"
 #include <sstream>
 
 namespace imgfx::core::autotune

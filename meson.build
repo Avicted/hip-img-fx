@@ -35,7 +35,7 @@ app_src = files(
 # RX 6900 XT; change as needed
 gpu_arch = '--offload-arch=gfx1030' 
 
-inc_src = include_directories('.')
+inc_src = include_directories('.', 'include')
 inc_sys = include_directories(['vendor', '/opt/rocm/include'], is_system: true)
 
 executable(

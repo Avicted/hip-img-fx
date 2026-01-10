@@ -36,7 +36,7 @@
 #include "types.h"
 #include "embedded_cache.h"
 #include "kernel_traits_concepts.h"
-#include "../gpu_utils.h"
+#include "hip_event.h"
 
 namespace imgfx::core::autotune
 {

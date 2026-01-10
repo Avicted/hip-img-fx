@@ -6,8 +6,8 @@
  * that the core components work as expected.
  */
 
-#include "../src/core/autotune/tuning_config.h"
-#include "../src/core/autotune/cache_store.h"
+#include "hip-img-fx/autotune/tuning_config.h"
+#include "hip-img-fx/autotune/cache_store.h"
 #include <iostream>
 #include <cassert>
 #include <cstdio>

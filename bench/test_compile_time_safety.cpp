@@ -22,8 +22,8 @@
 #include <cassert>
 
 // Include the concepts header
-#include "../src/core/autotune/kernel_traits_concepts.h"
-#include "../src/core/autotune/tuning_config.h"
+#include "hip-img-fx/autotune/kernel_traits_concepts.h"
+#include "hip-img-fx/autotune/tuning_config.h"
 
 using namespace imgfx::core::autotune;
 

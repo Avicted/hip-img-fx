@@ -13,7 +13,7 @@
 
 #include "tuning_config.h"
 #include "types.h"
-#include "../gpu_utils.h"
+#include "hip_event.h"
 
 namespace imgfx::core::autotune
 {

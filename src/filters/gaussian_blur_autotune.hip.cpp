@@ -1,5 +1,5 @@
 #include "filters.h"
-#include "../core/autotune/orchestrator.h"
+#include "hip-img-fx/autotune/orchestrator.h"
 
 namespace imgfx::filters
 {

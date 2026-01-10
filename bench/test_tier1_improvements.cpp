@@ -22,8 +22,8 @@
 
 #include "../src/core/gpu_utils.h"
 #include "../src/filters/filters.h"
-#include "../src/core/autotune/orchestrator.h"
-#include "../src/core/autotune/types.h"
+#include "hip-img-fx/autotune/orchestrator.h"
+#include "hip-img-fx/autotune/types.h"
 
 #define HIP_CHECK(call)                                                     \
     do                                                                      \

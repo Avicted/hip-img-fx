@@ -5,7 +5,7 @@
 #include <string>
 
 #include "../core/gpu_utils.h"
-#include "../core/autotune/tuning_config.h"
+#include "hip-img-fx/autotune/tuning_config.h"
 
 namespace imgfx::filters
 {

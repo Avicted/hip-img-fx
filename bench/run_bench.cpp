@@ -173,7 +173,7 @@ double bench_cpu_omp(FILTER_TYPE filter, image_t &input, image_t &output, int it
 void run_benchmark_suite(const BenchConfig &config)
 {
     printf("====================================================================\n");
-    printf("   HIP Image FX - Production GPU Benchmark Suite\n");
+    printf("   HIP Image FX v%s - Production GPU Benchmark Suite\n", HIP_IMG_FX_VERSION);
     printf("====================================================================\n");
     printf("Configuration:\n");
     printf("  Warmup iterations: %d\n", config.warmup_iterations);
@@ -184,7 +184,7 @@ void run_benchmark_suite(const BenchConfig &config)
 
     // Test configurations
     std::vector<int> resolutions = {512, 1024, 2048, 4096};
-    std::vector<int> batch_sizes = {1, 32, 64};
+    std::vector<int> batch_sizes = {1, 8, 16, 32, 64};
     std::vector<std::pair<FILTER_TYPE, std::string>> filters = {
         {FILTER_TYPE::GRAYSCALE, "grayscale"},
         {FILTER_TYPE::NEGATIVE, "negative"},

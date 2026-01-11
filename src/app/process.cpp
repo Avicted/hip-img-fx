@@ -120,8 +120,6 @@ namespace imgfx::app
             std::vector<imgfx::core::image_t> input_chunk(input_images.begin() + offset, input_images.begin() + offset + current_chunk);
             std::vector<imgfx::core::image_t> output_chunk(output_images.begin() + offset, output_images.begin() + offset + current_chunk);
 
-            // printf("Launching GPU filter kernel: %s (batched)\n", filter_type_to_string(filter_type).c_str());
-
             hipError_t err = apply_filter_gpu(filter_type, input_chunk, output_chunk);
             if (err != hipSuccess)
             {
@@ -166,8 +164,6 @@ namespace imgfx::app
             fprintf(stderr, "ERROR: Failed to load input image: %s\n", input_path.c_str());
             return -1;
         }
-
-        // print_image_info(&image);
 
         imgfx::core::image_t output_image;
         output_image.width = image.width;

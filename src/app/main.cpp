@@ -18,7 +18,9 @@ inline void print_elapsed_time(const std::chrono::steady_clock::time_point &star
 int main(int argc, char **argv)
 {
     const auto start_time = std::chrono::steady_clock::now();
-    printf("Running HIP image fx...\n");
+    printf("============================\n");
+    printf("Running HIP Image FX v%s\n", HIP_IMG_FX_VERSION);
+    printf("============================\n");
 
     const cli::cli_args_t args = cli::parse_cli_args(argc, argv);
     bool use_cpu = args.use_cpu;

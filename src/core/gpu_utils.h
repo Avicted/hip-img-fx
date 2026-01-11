@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <cstdio>
 #include <cstdlib>
+#include <memory>
 
 #include "image.h"
 #include "../filters/filters.h"

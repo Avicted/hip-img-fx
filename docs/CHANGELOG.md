@@ -65,14 +65,14 @@ HIP Image FX v1.0.0 introduces a production-ready autotuning framework for GPU k
 
 ### Documentation
 
-- **[Autotuning Guide](docs/AUTOTUNING_GUIDE.md)** - Comprehensive framework guide
+- **[Autotuning Guide](AUTOTUNING_GUIDE.md)** - Comprehensive framework guide
   - Quick start (5-minute intro)
   - Core concepts and architecture
   - Complete API reference
   - Advanced topics (custom tuning, multi-GPU)
   - Performance tuning strategies
   - Troubleshooting guide
-- **[Documentation Hub](docs/README.md)** - Central navigation
+- **[Documentation Hub](README.md)** - Central navigation
 - Updated main README with library usage instructions
 - Archived detailed benchmarks and quick reference to docs/archive/
 
@@ -157,7 +157,7 @@ Developed as a demonstration of production-grade GPU performance engineering wit
 
 ### License
 
-MIT License - See [LICENSE](LICENSE) for details.
+MIT License - See [LICENSE](../LICENSE) for details.
 
 ---
 

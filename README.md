@@ -3,7 +3,7 @@
 [![AMD ROCm](https://img.shields.io/badge/AMD-ROCm-red)]()
 [![HIP](https://img.shields.io/badge/HIP-C%2B%2B20-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-green)]()
-[![Version](https://img.shields.io/badge/version-1.0.0-green)]()
+[![Version](https://img.shields.io/badge/version-1.0.1-green)]()
 
 GPU-accelerated image processing framework with **production-ready autotuning** for optimal kernel configurations.
 
@@ -104,7 +104,7 @@ ninja -C build
 # Verify build
 ./build/hip-img-fx --help
 ============================
-Running HIP Image FX v1.0.0
+Running HIP Image FX v1.0.1
 ============================
 
 Usage: hip-img-fx [options]

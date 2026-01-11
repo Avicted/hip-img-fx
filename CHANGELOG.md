@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] - 2026-01-11
 
-### 🎉 First Stable Release
+###  First Stable Release
 
 HIP Image FX v1.0.0 introduces a production-ready autotuning framework for GPU kernels with comprehensive documentation and a stable public API.
 
@@ -58,24 +58,23 @@ HIP Image FX v1.0.0 introduces a production-ready autotuning framework for GPU k
 ### Performance
 
 - **12-18% speedup** from optimal configurations vs default 256-thread blocks
-- **577× speedup** on Gaussian blur vs single-threaded CPU
-- **41.8× speedup** on Gaussian blur vs OpenMP (32 threads)
+- **582× speedup** on Gaussian blur vs single-threaded CPU (4096×4096)
+- **41× speedup** on Gaussian blur vs OpenMP (32 threads, 1024×1024)
 - **~100-200ms** first-run tuning overhead (one-time cost)
 - **Zero overhead** for cached configurations
 
 ### Documentation
 
-- **[Autotuning Guide](docs/AUTOTUNING_GUIDE.md)** - Comprehensive 600+ line guide
+- **[Autotuning Guide](docs/AUTOTUNING_GUIDE.md)** - Comprehensive framework guide
   - Quick start (5-minute intro)
   - Core concepts and architecture
   - Complete API reference
   - Advanced topics (custom tuning, multi-GPU)
   - Performance tuning strategies
   - Troubleshooting guide
-- **[Documentation Hub](docs/README.md)** - Central navigation for all docs
-- **[Quick Reference](docs/COMPILE_TIME_SAFETY_QUICK_REFERENCE.md)** - API cheat sheet
-- **[Benchmark Results](docs/BENCHMARK_RESULTS.md)** - Empirical performance data
+- **[Documentation Hub](docs/README.md)** - Central navigation
 - Updated main README with library usage instructions
+- Archived detailed benchmarks and quick reference to docs/archive/
 
 ### Changed
 
@@ -102,18 +101,18 @@ HIP Image FX v1.0.0 introduces a production-ready autotuning framework for GPU k
 ### Stability Guarantees (v1.0)
 
 #### Stable & Supported
-- ✅ `TuningOrchestrator<KernelTraits>` template interface
-- ✅ `ValidKernelTraits` concept requirements
-- ✅ `TuningConfig` get/set/iteration API
-- ✅ `TuningOptions` configuration structure
-- ✅ Cache file format (JSON schema)
-- ✅ Compile-time validation behavior
+-  `TuningOrchestrator<KernelTraits>` template interface
+-  `ValidKernelTraits` concept requirements
+-  `TuningConfig` get/set/iteration API
+-  `TuningOptions` configuration structure
+-  Cache file format (JSON schema)
+-  Compile-time validation behavior
 
 #### Not Yet Stable
-- ⚠️ Benchmarking heuristics (early-exit thresholds may be tuned)
-- ⚠️ Cache pruning strategies (future enhancement)
-- ⚠️ Specific candidate generation patterns (kernel-specific)
-- ⚠️ Error message wording (can improve without breaking)
+-  Benchmarking heuristics (early-exit thresholds may be tuned)
+-  Cache pruning strategies (future enhancement)
+-  Specific candidate generation patterns (kernel-specific)
+-  Error message wording (can improve without breaking)
 
 #### Explicitly Not Guaranteed
 - Performance characteristics (hardware-dependent)
@@ -162,22 +161,6 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 ---
 
-## [Unreleased]
-
-### Added
-
-### Changed
-
-### Deprecated
-
-### Removed
-
-### Fixed
-
-### Security
-
----
-
 ## [0.2.0] - 2025-12-XX
 
 ### Added
@@ -199,9 +182,3 @@ MIT License - See [LICENSE](LICENSE) for details.
 - Grayscale, negative, and Gaussian blur filters
 - Basic GPU vs CPU benchmarking
 - Batch processing support
-
----
-
-[1.0.0]: https://github.com/yourusername/hip-img-fx/releases/tag/v1.0.0
-[0.2.0]: https://github.com/yourusername/hip-img-fx/releases/tag/v0.2.0
-[0.1.0]: https://github.com/yourusername/hip-img-fx/releases/tag/v0.1.0

@@ -173,7 +173,7 @@ double bench_cpu_omp(FILTER_TYPE filter, image_t &input, image_t &output, int it
 void run_benchmark_suite(const BenchConfig &config)
 {
     printf("====================================================================\n");
-    printf("   HIP Image FX - Production GPU Benchmark Suite\n");
+    printf("   HIP Image FX v%s - Production GPU Benchmark Suite\n", HIP_IMG_FX_VERSION);
     printf("====================================================================\n");
     printf("Configuration:\n");
     printf("  Warmup iterations: %d\n", config.warmup_iterations);

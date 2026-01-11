@@ -28,14 +28,20 @@ namespace imgfx::core::autotune
             std::string search_key = "\"" + key + "\":";
             size_t pos = json.find(search_key);
             if (pos == std::string::npos)
+            {
                 return "";
+            }
 
             pos += search_key.length();
             while (pos < json.length() && (json[pos] == ' ' || json[pos] == '\t'))
+            {
                 pos++;
+            }
 
             if (pos >= json.length())
+            {
                 return "";
+            }
 
             if (json[pos] == '"')
             {
@@ -43,7 +49,10 @@ namespace imgfx::core::autotune
                 size_t start = pos + 1;
                 size_t end = json.find('"', start);
                 if (end == std::string::npos)
+                {
                     return "";
+                }
+
                 return json.substr(start, end - start);
             }
             else
@@ -55,7 +64,11 @@ namespace imgfx::core::autotune
                        (std::isdigit(json[end]) || json[end] == '.' ||
                         json[end] == '-' || json[end] == '+' ||
                         json[end] == 'e' || json[end] == 'E'))
+                {
+
                     end++;
+                }
+
                 return json.substr(start, end - start);
             }
         }
@@ -73,7 +86,9 @@ namespace imgfx::core::autotune
         for (const auto &[key, entry] : cache_)
         {
             if (!first)
+            {
                 oss << ",\n";
+            }
             first = false;
 
             oss << "    {\n";
@@ -101,7 +116,9 @@ namespace imgfx::core::autotune
         size_t array_end = json_content.rfind(']');
 
         if (array_start == std::string::npos || array_end == std::string::npos)
+        {
             return;
+        }
 
         std::string array_content = json_content.substr(array_start + 1, array_end - array_start - 1);
 
@@ -111,11 +128,15 @@ namespace imgfx::core::autotune
         {
             size_t obj_start = array_content.find('{', pos);
             if (obj_start == std::string::npos)
+            {
                 break;
+            }
 
             size_t obj_end = array_content.find('}', obj_start);
             if (obj_end == std::string::npos)
+            {
                 break;
+            }
 
             std::string obj_content = array_content.substr(obj_start, obj_end - obj_start + 1);
 
@@ -174,6 +195,7 @@ namespace imgfx::core::autotune
         {
             printf("[AutoTuner] Loaded %zu cached configurations from '%s'\n",
                    cache_.size(), path.c_str());
+            modified_ = false; // Reset modified flag after loading
         }
 
         return !cache_.empty();
@@ -193,6 +215,7 @@ namespace imgfx::core::autotune
         {
             printf("[AutoTuner] Loaded %zu embedded default configurations\n",
                    cache_.size() - prev_size);
+            modified_ = false; // Reset after loading embedded cache
         }
 
         return cache_.size() > prev_size;
@@ -220,6 +243,27 @@ namespace imgfx::core::autotune
                cache_.size(), path.c_str());
 
         return true;
+    }
+
+    void CacheStore::insert(const CacheKey &key, const TuningConfig &config, float time_ms)
+    {
+        // Check if this is a new entry or an update
+        bool is_new = (cache_.find(key) == cache_.end());
+
+        // Generate ISO 8601 timestamp
+        std::time_t now = std::time(nullptr);
+        char timestamp[32];
+        std::strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%S", std::localtime(&now));
+
+        CacheEntry entry{key, config, time_ms};
+        entry.timestamp = timestamp;
+        cache_[key] = entry;
+
+        // Mark as modified only if new entry or config changed
+        if (is_new)
+        {
+            modified_ = true;
+        }
     }
 
 } // namespace imgfx::core::autotune

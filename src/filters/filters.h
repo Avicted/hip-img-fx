@@ -83,10 +83,14 @@ namespace imgfx::filters
             {
                 // Categorize by image size for cache differentiation
                 if (image_bytes < 1024 * 1024)
+                {
                     return "small"; // < 1MB
+                }
                 if (image_bytes < 10 * 1024 * 1024)
+                {
                     return "medium"; // 1-10MB
-                return "large";      // > 10MB
+                }
+                return "large"; // > 10MB
             }
         };
 
@@ -129,11 +133,15 @@ namespace imgfx::filters
 
             // Wavefront alignment (AMD GPUs use 64-wide wavefronts)
             if (threads % 64 != 0)
+            {
                 return false;
+            }
 
             // Reasonable thread limits
             if (threads < 64 || threads > 1024)
+            {
                 return false;
+            }
 
             return true;
         }
@@ -192,9 +200,13 @@ namespace imgfx::filters
             std::string cache_key() const
             {
                 if (image_bytes < 1024 * 1024)
+                {
                     return "small";
+                }
                 if (image_bytes < 10 * 1024 * 1024)
+                {
                     return "medium";
+                }
                 return "large";
             }
         };
@@ -234,9 +246,13 @@ namespace imgfx::filters
         {
             int threads = cfg.block_x() * cfg.block_y();
             if (threads % 64 != 0)
+            {
                 return false;
+            }
             if (threads < 64 || threads > 1024)
+            {
                 return false;
+            }
             return true;
         }
 
@@ -294,11 +310,17 @@ namespace imgfx::filters
             {
                 std::string size_key;
                 if (image_bytes < 1024 * 1024)
+                {
                     size_key = "small";
+                }
                 else if (image_bytes < 10 * 1024 * 1024)
+                {
                     size_key = "medium";
+                }
                 else
+                {
                     size_key = "large";
+                }
 
                 // Blur amount affects performance
                 std::string blur_key = blur_amount < 5 ? "blur_small" : "blur_large";
@@ -344,9 +366,13 @@ namespace imgfx::filters
         {
             int threads = cfg.block_x() * cfg.block_y();
             if (threads % 64 != 0)
+            {
                 return false;
+            }
             if (threads < 64 || threads > 1024)
+            {
                 return false;
+            }
             return true;
         }
 

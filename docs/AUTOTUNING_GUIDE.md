@@ -52,27 +52,43 @@ For existing filters (grayscale, negative, gaussian_blur), autotuning works auto
 ### Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                  Your Application                    │
-├─────────────────────────────────────────────────────┤
-│              apply_grayscale_autotuned()             │
-│              apply_negative_autotuned()              │
-│              apply_gaussian_blur_autotuned()         │
-├─────────────────────────────────────────────────────┤
-│          TuningOrchestrator<KernelTraits>            │
-│                                                      │
-│  ┌──────────────────────────────────────────────┐  │
-│  │  Three-Tier Caching System                   │  │
-│  │  ┌────────────┐  ┌────────────┐  ┌────────┐ │  │
-│  │  │ Thread-    │→│ Persistent │→│ Tuning │ │  │
-│  │  │ Local      │  │ Cache      │  │ Run    │ │  │
-│  │  │ (instant)  │  │ (JSON)     │  │ (bench)│ │  │
-│  │  └────────────┘  └────────────┘  └────────┘ │  │
-│  └──────────────────────────────────────────────┘  │
-├─────────────────────────────────────────────────────┤
-│              TuningBenchmarker                       │
-│         (HIP event timing, statistics)               │
-└─────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                       Your Application                       │
+│                                                              │
+│   apply_grayscale_autotuned()                                │
+│   apply_negative_autotuned()                                 │
+│   apply_gaussian_blur_autotuned()                            │
+└───────────────────────────────┬──────────────────────────────┘
+                                ▼
+┌──────────────────────────────────────────────────────────────┐
+│            TuningOrchestrator<KernelTraits>                  │
+│                                                              │
+│  • Compile-time validation (C++20 concepts)                  │
+│  • Candidate pruning / skip autotuning                       │
+│  • Cache lookup and fallback logic                           │
+│  • Orchestrates benchmarking and selection                   │
+└───────────────────────────────┬──────────────────────────────┘
+                                ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    Three-Tier Caching System                 │
+│                                                              │
+│  ┌──────────────┐   ┌────────────────┐   ┌───────────────┐   │
+│  │ Thread-Local │ → │ Persistent     │ → │ Tuning Run    │   │
+│  │ Cache        │   │ Cache (JSON)   │   │ (Benchmark)   │   │
+│  │ (Instant)    │   │ (Disk)         │   │ (HIP timing)  │   │
+│  └──────────────┘   └────────────────┘   └───────────────┘   │
+│                                                              │
+│  Fast path → Cached → Slow path (only if needed)             │
+└───────────────────────────────┬──────────────────────────────┘
+                                ▼
+┌──────────────────────────────────────────────────────────────┐
+│                     TuningBenchmarker                        │
+│                                                              │
+│  • HIP event timing                                          │
+│  • Multiple runs & statistics                                │
+│  • Early-exit for fast convergence                           │
+│  • Rejects unstable or invalid measurements                  │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ### Three-Tier Caching
@@ -215,7 +231,7 @@ void apply_my_filter_autotuned(
     ctx.size_category = (size < 1000000) ? 0 : 1;
     
     // Get optimal config and launch
-    orchestrator.launch_tuned(ctx, args, stream);
+    orchestrator.execute(args, ctx, stream);
 }
 ```
 
@@ -237,19 +253,19 @@ Main entry point for autotuning.
 
 **Methods:**
 ```cpp
-void launch_tuned(
-    const typename KernelTraits::Context& ctx,
+void execute(
     const typename KernelTraits::Args& args,
+    const typename KernelTraits::Context& ctx,
     hipStream_t stream = 0,
-    const TuningOptions& opts = TuningOptions::default_options()
+    const TuningOptions& options = TuningOptions::defaults()
 );
 ```
 
 **Parameters:**
-- `ctx`: Context for cache lookup (e.g., image size category)
 - `args`: Kernel arguments
+- `ctx`: Context for cache lookup (e.g., image size category)
 - `stream`: HIP stream for execution
-- `opts`: Tuning behavior options
+- `options`: Tuning behavior options
 
 #### `TuningConfig`
 
@@ -274,18 +290,19 @@ Controls tuning behavior.
 
 **Presets:**
 ```cpp
-static TuningOptions default_options();   // Balanced
-static TuningOptions quiet();             // Minimal output
-static TuningOptions conservative();      // More warmup/timing runs
-static TuningOptions aggressive();        // Fast tuning
+static TuningOptions defaults();      // Balanced
+static TuningOptions quiet();         // Minimal output
+static TuningOptions conservative();  // Test all candidates
+static TuningOptions aggressive();    // Faster tuning with early exit
 ```
 
 **Fields:**
 ```cpp
-bool verbose = true;              // Print tuning progress
-int num_warmup_runs = 5;          // Warmup iterations
-int num_timing_runs = 10;         // Timing iterations
-float early_exit_threshold = 1.5; // Stop if X times slower
+bool verbose = true;                  // Print tuning progress
+int warmup_runs = 5;                  // Warmup iterations
+int timing_runs = 10;                 // Timing iterations
+bool enable_early_exit = true;        // Stop if best found
+double early_exit_threshold = 1.15;   // Stop if 15% slower than best
 ```
 
 ### Kernel Traits Requirements
@@ -325,13 +342,13 @@ The framework uses C++20 concepts to enforce requirements at compile-time. Inval
 Control tuning aggressiveness:
 
 ```cpp
-auto opts = imgfx::core::autotune::TuningOptions::default_options();
-opts.num_warmup_runs = 10;     // More warmup
-opts.num_timing_runs = 20;     // More timing samples
-opts.early_exit_threshold = 2.0; // Be more patient
-opts.verbose = false;           // Silent mode
+TuningOptions options;
+options.warmup_runs = 10;        // More warmup
+options.timing_runs = 20;        // More timing samples
+options.early_exit_threshold = 2.0; // Be more patient
+options.verbose = false;         // Silent mode
 
-orchestrator.launch_tuned(ctx, args, stream, opts);
+orchestrator.execute(args, ctx, stream, options);
 ```
 
 ### Context-Aware Tuning
@@ -393,7 +410,7 @@ For multi-GPU applications:
 ```cpp
 // Set device before launching
 hipSetDevice(gpu_id);
-orchestrator.launch_tuned(ctx, args, stream);
+orchestrator.execute(args, ctx, stream);
 ```
 
 ---
@@ -538,10 +555,10 @@ static bool is_valid_config(const TuningConfig& cfg, const Args& args) {
 
 **Solution**: Reduce candidates or adjust options
 ```cpp
-auto opts = TuningOptions::aggressive();  // Faster tuning
-opts.num_warmup_runs = 3;
-opts.num_timing_runs = 5;
-opts.early_exit_threshold = 1.2;  // More aggressive pruning
+auto options = TuningOptions::aggressive();  // Faster tuning
+options.warmup_runs = 3;
+options.timing_runs = 5;
+options.early_exit_threshold = 1.2;  // More aggressive pruning
 ```
 
 ### Problem: Suboptimal configuration selected
@@ -550,9 +567,9 @@ opts.early_exit_threshold = 1.2;  // More aggressive pruning
 
 **Solution**: Use conservative options
 ```cpp
-auto opts = TuningOptions::conservative();
-opts.num_warmup_runs = 10;
-opts.num_timing_runs = 20;
+auto options = TuningOptions::conservative();
+options.warmup_runs = 10;
+options.timing_runs = 20;
 ```
 
 ### Debug Mode
@@ -560,8 +577,8 @@ opts.num_timing_runs = 20;
 For development, enable verbose output:
 
 ```cpp
-auto opts = TuningOptions::default_options();
-opts.verbose = true;  // See detailed tuning progress
+auto options = TuningOptions::defaults();
+options.verbose = true;  // See detailed tuning progress
 ```
 
 **Disable in production**:
@@ -634,23 +651,79 @@ struct ReductionKernelTraits {
 
 ---
 
+## Generating Embedded Configs for Your GPU
+
+The framework includes embedded default configurations for gfx1030 (AMD RX 6900 XT). To generate optimized defaults for your GPU:
+
+### Step 1: Collect Configurations
+
+Run the collection script to generate optimal configs for your hardware:
+
+```bash
+./bench/scripts/collect_default_configs.sh
+```
+
+This will:
+1. Detect your GPU architecture (e.g., gfx1030, gfx1100)
+2. Temporarily disable embedded cache for clean benchmarking
+3. Test all filters at multiple image sizes (small, medium, large)
+4. Generate `default_configs_<YOUR_GPU>.json` with 9 entries (3 filters × 3 sizes)
+
+**Note**: The collection script uses the main application (not the benchmark tool) to ensure accurate config generation. The benchmark tool disables cache saving to avoid interference between static orchestrators.
+
+### Step 2: Merge Into Header
+
+Convert the JSON file to C++ header format:
+
+```bash
+./bench/scripts/merge_default_caches.py default_configs_*.json > include/hip-img-fx/autotune/embedded_cache.h
+```
+
+### Step 3: Rebuild
+
+```bash
+ninja -C build
+```
+
+Your optimized configs are now embedded in the binary!
+
+### Multi-GPU Support
+
+To support multiple GPU architectures in one binary:
+
+```bash
+# Collect on each GPU
+./bench/scripts/collect_default_configs.sh  # On GPU 1 → default_configs_gfx1030.json
+./bench/scripts/collect_default_configs.sh  # On GPU 2 → default_configs_gfx1100.json
+
+# Merge all into one header
+./bench/scripts/merge_default_caches.py default_configs_*.json > include/hip-img-fx/autotune/embedded_cache.h
+```
+
+The framework automatically selects the correct configs based on `hipDeviceGetProperties()`.
+
+### Environment Variables
+
+- **`HIP_IMG_FX_NO_CACHE_SAVE=1`**: Disables cache saving (used by benchmark tool to avoid cache conflicts)
+
+---
+
 ## Additional Resources
 
-- **[Quick Reference Card](COMPILE_TIME_SAFETY_QUICK_REFERENCE.md)** - API cheat sheet
-- **[Benchmark Results](BENCHMARK_RESULTS.md)** - Empirical performance data
-- **[Examples](../examples/)** - Sample implementations
-- **[Source Code](../include/hip-img-fx/autotune/)** - Framework implementation
+- **[Source Code](../include/hip-img-fx/autotune/)** - Framework implementation headers
+- **[Main README](../README.md)** - Project overview and installation
+- **[Examples](../examples/)** - Sample images for testing
+- **[Benchmark Scripts](../bench/scripts/)** - Config generation tools
 
 ---
 
 ## Version History
 
-- **v0.2.0** (2026-01): Production-ready autotuning framework
+- **v1.0.0** (2026-01): Production-ready autotuning framework
   - Three-tier caching system
   - Compile-time safety with C++20 concepts
   - Comprehensive benchmarking engine
-  - Persistent JSON cache
-
----
+  - Persistent JSON cache with timestamps
+  - Embedded default configurations
 
 *For more information, see the main [README](../README.md).*

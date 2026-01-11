@@ -28,6 +28,9 @@ echo "Running benchmark suite..."
 echo "Output will be saved to: $OUTPUT_CSV"
 echo ""
 
+# Disable cache saving during benchmark to avoid interference between static orchestrators
+export HIP_IMG_FX_NO_CACHE_SAVE=1
+
 "$BENCH_BIN" --warmup 2 --iterations 5 --output "$OUTPUT_CSV" --verbose
 
 echo ""

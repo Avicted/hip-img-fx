@@ -8,4 +8,10 @@ examples/*
 
 bench/scripts/hip_img_fx_venv/
 
+# Autotuning cache files
 .autotune_cache*
+default_configs_*.json
+
+.github/
+
+compile_commands.json

@@ -54,11 +54,18 @@ namespace imgfx::core::autotune
         bool validate() const
         {
             if (warmup_runs < 0 || timing_runs <= 0)
+            {
                 return false;
+            }
             if (early_exit_threshold < 1.0)
+            {
                 return false;
+            }
             if (early_exit_min_coverage <= 0.0 || early_exit_min_coverage > 1.0)
+            {
                 return false;
+            }
+
             return true;
         }
 

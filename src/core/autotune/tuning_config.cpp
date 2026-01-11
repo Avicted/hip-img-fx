@@ -25,7 +25,9 @@ namespace imgfx::core::autotune
         for (const auto &key : keys_vec)
         {
             if (!first)
+            {
                 oss << ",";
+            }
             first = false;
 
             oss << key << "=";
@@ -54,7 +56,9 @@ namespace imgfx::core::autotune
         {
             size_t comma = str.find(',', pos);
             if (comma == std::string::npos)
+            {
                 comma = str.length();
+            }
 
             std::string pair = str.substr(pos, comma - pos);
 
@@ -109,7 +113,9 @@ namespace imgfx::core::autotune
         for (const auto &[key, value] : params_)
         {
             if (!first)
+            {
                 oss << ", ";
+            }
             first = false;
 
             oss << key << "=";

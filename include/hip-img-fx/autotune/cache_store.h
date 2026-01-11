@@ -155,10 +155,7 @@ namespace imgfx::core::autotune
          * @param config Configuration to store
          * @param time_ms Benchmark time (optional, for reference)
          */
-        void insert(const CacheKey &key, const TuningConfig &config, float time_ms = 0.0f)
-        {
-            cache_[key] = CacheEntry(key, config, time_ms);
-        }
+        void insert(const CacheKey &key, const TuningConfig &config, float time_ms = 0.0f);
 
         /**
          * @brief Check if cache contains key
@@ -184,7 +181,21 @@ namespace imgfx::core::autotune
         /**
          * @brief Clear all cached entries
          */
-        void clear() { cache_.clear(); }
+        void clear()
+        {
+            cache_.clear();
+            modified_ = true;
+        }
+
+        /**
+         * @brief Check if cache has been modified since loading
+         */
+        bool is_modified() const { return modified_; }
+
+        /**
+         * @brief Reset modified flag
+         */
+        void reset_modified() { modified_ = false; }
 
         /**
          * @brief Get all cache entries (for inspection/debugging)
@@ -226,6 +237,7 @@ namespace imgfx::core::autotune
 
     private:
         std::unordered_map<CacheKey, CacheEntry> cache_;
+        bool modified_ = false;
 
         // JSON serialization helpers (implementation in .cpp)
         std::string serialize() const;

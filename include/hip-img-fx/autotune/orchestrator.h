@@ -29,6 +29,7 @@
 #include <optional>
 #include <unordered_map>
 #include <cstdio>
+#include <cstdlib>
 
 #include "tuning_config.h"
 #include "cache_store.h"
@@ -111,10 +112,15 @@ namespace imgfx::core::autotune
          * @brief Construct orchestrator and load cache
          *
          * @param cache_path Path to persistent cache file
+         * @param enable_save Whether to save cache on destruction (default: true, or controlled by HIP_IMG_FX_NO_CACHE_SAVE env var)
          */
-        explicit TuningOrchestrator(const std::string &cache_path = ".autotune_cache.json")
+        explicit TuningOrchestrator(const std::string &cache_path = ".autotune_cache.json", bool enable_save = true)
             : cache_path_(cache_path)
         {
+            // Check environment variable to disable cache saving (useful for benchmarks)
+            const char *no_save_env = std::getenv("HIP_IMG_FX_NO_CACHE_SAVE");
+            enable_save_ = enable_save && (no_save_env == nullptr || std::string(no_save_env) != "1");
+
             gpu_arch_ = query_gpu_arch();
 
             // Load user cache first (highest priority)
@@ -128,11 +134,14 @@ namespace imgfx::core::autotune
         }
 
         /**
-         * @brief Destructor - saves cache to disk
+         * @brief Destructor - saves cache to disk (if enabled and modified)
          */
         ~TuningOrchestrator()
         {
-            cache_.save(cache_path_);
+            if (enable_save_ && cache_.is_modified())
+            {
+                cache_.save(cache_path_);
+            }
         }
 
         // Disable copy, allow move
@@ -256,10 +265,11 @@ namespace imgfx::core::autotune
             }
 
             // Slow path: perform autotuning
-            TuningConfig best_config = tune(args, options);
+            float best_time_ms = 0.0f;
+            TuningConfig best_config = tune(args, options, best_time_ms);
 
             // Populate caches
-            cache_.insert(key, best_config);
+            cache_.insert(key, best_config, best_time_ms);
             fast_cache[fast_key] = best_config;
 
             return best_config;
@@ -328,9 +338,10 @@ namespace imgfx::core::autotune
          *
          * @param args Kernel arguments for benchmarking
          * @param options Tuning options
+         * @param out_best_time_ms Output parameter for best configuration's time
          * @return Optimal TuningConfig
          */
-        TuningConfig tune(const Args &args, const TuningOptions &options)
+        TuningConfig tune(const Args &args, const TuningOptions &options, float &out_best_time_ms)
         {
             if (options.verbose)
             {
@@ -435,6 +446,7 @@ namespace imgfx::core::autotune
                        best->avg_time_ms, best->stddev_ms);
             }
 
+            out_best_time_ms = best->avg_time_ms;
             return best->config;
         }
 
@@ -465,6 +477,7 @@ namespace imgfx::core::autotune
 
         std::string gpu_arch_;
         std::string cache_path_;
+        bool enable_save_;
         CacheStore cache_;
     };
 

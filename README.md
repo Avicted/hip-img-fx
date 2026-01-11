@@ -321,26 +321,26 @@ diff <(xxd gpu_out.jpg) <(xxd cpu_out.jpg)
 
 ```
 hip-img-fx/
- src/
-    app/                   # Application entry point & batch processing
-    cli/                   # Command-line argument parsing
-    core/                  # GPU utilities, timing, image I/O
-       gpu_utils.cpp/h    # HIP pipeline, events, streams
-       image.cpp/h        # STB-based image loading
-    filters/               # HIP kernels & CPU implementations
-        grayscale.hip.cpp
-        negative.hip.cpp
-        gaussian_blur.hip.cpp
- bench/
-    run_bench.cpp          # Benchmark harness
-    scripts/
-       run_benchmark.sh   # Automated benchmark runner
-       analyze_results.py # Performance analysis tool
-    results/               # CSV output directory
- examples/                  # Sample images
- native/
-    hip.ini                # Meson HIP configuration
- meson.build                # Build system
+├── src/
+│   ├── app/                    # Application entry point & batch processing
+│   ├── cli/                    # Command-line argument parsing
+│   ├── core/                   # GPU utilities, timing, image I/O
+│   │   ├── gpu_utils.cpp/.h    # HIP pipeline, events, streams
+│   │   └── image.cpp/.h        # STB-based image loading
+│   └── filters/                # HIP kernels & CPU implementations
+│       ├── grayscale.hip.cpp
+│       ├── negative.hip.cpp
+│       └── gaussian_blur.hip.cpp
+├── bench/
+│   ├── run_bench.cpp           # Benchmark harness
+│   ├── scripts/
+│   │   ├── run_benchmark.sh    # Automated benchmark runner
+│   │   └── analyze_results.py  # Performance analysis tool
+│   └── results/                # CSV output directory
+├── examples/                   # Sample images
+├── native/
+│   └── hip.ini                 # Meson HIP configuration
+└── meson.build                 # Build system
 ```
 
 

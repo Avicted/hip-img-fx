@@ -387,11 +387,14 @@ namespace imgfx::filters
             dim3 block_dim(cfg.block_x(), cfg.block_y(), 1);
             dim3 grid_dim(blocks_x, args.num_images, 1);
 
+            // Calculate shared memory needed for Gaussian kernel weights
+            size_t shared_mem_bytes = args.blur_amount * args.blur_amount * sizeof(float);
+
             hipLaunchKernelGGL(
                 gaussian_blur_kernel,
                 grid_dim,
                 block_dim,
-                0,
+                shared_mem_bytes,
                 stream,
                 args.input,
                 args.output,

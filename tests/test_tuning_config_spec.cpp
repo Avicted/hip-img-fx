@@ -343,3 +343,140 @@ TEST(TuningConfigSpec, RepeatedSetAndOverwrite)
         EXPECT_EQ(cfg.size(), 1) << "Size should remain 1 when overwriting";
     }
 }
+
+// ============================================================================
+// ADDITIONAL BRANCH COVERAGE TESTS
+// ============================================================================
+
+// Note: TuningConfig doesn't have remove() or clear() methods
+// These tests focus on what's actually available in the API
+
+TEST(TuningConfigSpec, ToStringProducesHumanReadableFormat)
+{
+    TuningConfig cfg;
+    cfg.set("block_x", 256);
+    cfg.set("block_y", 1);
+
+    std::string str = cfg.to_string();
+
+    // Should contain both parameters
+    EXPECT_TRUE(str.find("block_x") != std::string::npos);
+    EXPECT_TRUE(str.find("block_y") != std::string::npos);
+    EXPECT_TRUE(str.find("256") != std::string::npos);
+    EXPECT_TRUE(str.find("1") != std::string::npos);
+}
+
+TEST(TuningConfigSpec, ToStringForEmptyConfig)
+{
+    TuningConfig cfg;
+
+    std::string str = cfg.to_string();
+
+    EXPECT_FALSE(str.empty());
+    // Should indicate it's empty or have minimal content
+}
+
+TEST(TuningConfigSpec, GetOrWithTypeMismatchReturnsDefault)
+{
+    TuningConfig cfg;
+    cfg.set("param", 42); // int
+
+    // Try to get as float with default
+    float result = cfg.get_or<float>("param", 3.14f);
+    EXPECT_FLOAT_EQ(result, 3.14f);
+}
+
+TEST(TuningConfigSpec, SetBlockDimsWithZeroValues)
+{
+    TuningConfig cfg;
+    cfg.set_block_dims(0, 0, 0);
+
+    EXPECT_EQ(cfg.block_x(), 0);
+    EXPECT_EQ(cfg.block_y(), 0);
+    EXPECT_EQ(cfg.block_z(), 0);
+    EXPECT_EQ(cfg.total_threads(), 0);
+}
+
+TEST(TuningConfigSpec, SetBlockDimsWithLargeValues)
+{
+    TuningConfig cfg;
+    cfg.set_block_dims(1024, 1024, 64);
+
+    EXPECT_EQ(cfg.block_x(), 1024);
+    EXPECT_EQ(cfg.block_y(), 1024);
+    EXPECT_EQ(cfg.block_z(), 64);
+    EXPECT_EQ(cfg.total_threads(), 1024 * 1024 * 64);
+}
+
+TEST(TuningConfigSpec, InequalityOperatorOppositeOfEquality)
+{
+    TuningConfig cfg1, cfg2;
+    cfg1.set("param", 10);
+    cfg2.set("param", 20);
+
+    EXPECT_TRUE(cfg1 != cfg2);
+    EXPECT_FALSE(cfg1 == cfg2);
+}
+
+TEST(TuningConfigSpec, EqualityWithSameTypesSameValues)
+{
+    TuningConfig cfg1, cfg2;
+    cfg1.set("int_val", 42);
+    cfg1.set("float_val", 3.14f);
+    cfg1.set("bool_val", true);
+
+    cfg2.set("int_val", 42);
+    cfg2.set("float_val", 3.14f);
+    cfg2.set("bool_val", true);
+
+    EXPECT_TRUE(cfg1 == cfg2);
+}
+
+TEST(TuningConfigSpec, SetOverwritesWithDifferentType)
+{
+    TuningConfig cfg;
+    cfg.set("param", 42); // int
+
+    EXPECT_EQ(cfg.get<int>("param"), 42);
+
+    cfg.set("param", 3.14f); // float (overwrites)
+
+    // Old int should be gone, new float should be there
+    EXPECT_THROW(cfg.get<int>("param"), std::runtime_error);
+    EXPECT_FLOAT_EQ(cfg.get<float>("param"), 3.14f);
+}
+
+TEST(TuningConfigSpec, BooleanParameterHandling)
+{
+    TuningConfig cfg;
+    cfg.set("flag_true", true);
+    cfg.set("flag_false", false);
+
+    EXPECT_TRUE(cfg.get<bool>("flag_true"));
+    EXPECT_FALSE(cfg.get<bool>("flag_false"));
+
+    EXPECT_TRUE(cfg.get_or<bool>("flag_true", false));
+    EXPECT_FALSE(cfg.get_or<bool>("flag_false", true));
+}
+
+TEST(TuningConfigSpec, ZeroAndNegativeIntegerValues)
+{
+    TuningConfig cfg;
+    cfg.set("zero", 0);
+    cfg.set("negative", -100);
+
+    EXPECT_EQ(cfg.get<int>("zero"), 0);
+    EXPECT_EQ(cfg.get<int>("negative"), -100);
+}
+
+TEST(TuningConfigSpec, FloatingPointEdgeCases)
+{
+    TuningConfig cfg;
+    cfg.set("zero", 0.0f);
+    cfg.set("negative", -3.14f);
+    cfg.set("small", 0.0001f);
+
+    EXPECT_FLOAT_EQ(cfg.get<float>("zero"), 0.0f);
+    EXPECT_FLOAT_EQ(cfg.get<float>("negative"), -3.14f);
+    EXPECT_FLOAT_EQ(cfg.get<float>("small"), 0.0001f);
+}

@@ -560,3 +560,301 @@ TEST(CacheStoreSpec, LargeConfigurationsCanBeStored)
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->size(), 100u);
 }
+
+// ============================================================================
+// TEST SUITE: Additional Branch Coverage Tests
+// ============================================================================
+
+TEST(CacheStoreSpec, RemoveIfWithNoMatchesLeavesStoreUnchanged)
+{
+    CacheStore store;
+    CacheKey key1("gfx1100", "kernel1", "ctx");
+    CacheKey key2("gfx1100", "kernel2", "ctx");
+
+    TuningConfig config;
+    store.insert(key1, config);
+    store.insert(key2, config);
+
+    size_t initial_size = store.size();
+
+    // Remove entries that don't exist
+    store.remove_if([](const CacheEntry &entry)
+                    { return entry.key.kernel_name == "nonexistent"; });
+
+    EXPECT_EQ(store.size(), initial_size);
+}
+
+TEST(CacheStoreSpec, RemoveIfWithAllMatchesRemovesEverything)
+{
+    CacheStore store;
+    CacheKey key1("gfx1100", "kernel1", "ctx");
+    CacheKey key2("gfx1100", "kernel2", "ctx");
+
+    TuningConfig config;
+    store.insert(key1, config);
+    store.insert(key2, config);
+
+    // Remove all entries
+    store.remove_if([](const CacheEntry &)
+                    { return true; });
+
+    EXPECT_EQ(store.size(), 0u);
+    EXPECT_TRUE(store.empty());
+}
+
+TEST(CacheStoreSpec, RemoveIfWithSomeMatchesRemovesPartial)
+{
+    CacheStore store;
+    CacheKey key1("gfx1100", "keep", "ctx1");
+    CacheKey key2("gfx1030", "remove", "ctx2");
+    CacheKey key3("gfx1100", "keep", "ctx3");
+
+    TuningConfig config;
+    store.insert(key1, config);
+    store.insert(key2, config);
+    store.insert(key3, config);
+
+    // Remove only gfx1030 entries
+    store.remove_if([](const CacheEntry &entry)
+                    { return entry.key.gpu_arch == "gfx1030"; });
+
+    EXPECT_EQ(store.size(), 2u);
+    EXPECT_FALSE(store.contains(key2));
+    EXPECT_TRUE(store.contains(key1));
+    EXPECT_TRUE(store.contains(key3));
+}
+
+TEST(CacheStoreSpec, ContainsReturnsTrueForExistingEntry)
+{
+    CacheStore store;
+    CacheKey key("gfx1100", "kernel", "ctx");
+    TuningConfig config;
+
+    store.insert(key, config);
+
+    EXPECT_TRUE(store.contains(key));
+}
+
+TEST(CacheStoreSpec, ContainsReturnsFalseForNonExistingEntry)
+{
+    CacheStore store;
+    CacheKey existing_key("gfx1100", "kernel", "ctx");
+    CacheKey missing_key("gfx1030", "other", "ctx");
+
+    TuningConfig config;
+    store.insert(existing_key, config);
+
+    EXPECT_FALSE(store.contains(missing_key));
+}
+
+TEST(CacheStoreSpec, ContainsReturnsFalseForEmptyStore)
+{
+    CacheStore store;
+    CacheKey key("gfx1100", "kernel", "ctx");
+
+    EXPECT_FALSE(store.contains(key));
+}
+
+TEST(CacheStoreSpec, InsertWithBenchmarkTime)
+{
+    CacheStore store;
+    CacheKey key("gfx1100", "kernel", "ctx");
+    TuningConfig config;
+    config.set("block_x", 256);
+
+    float benchmark_time = 1.234f;
+    store.insert(key, config, benchmark_time);
+
+    // Verify entry has benchmark time
+    const auto &entries = store.entries();
+    ASSERT_EQ(entries.size(), 1u);
+    EXPECT_FLOAT_EQ(entries[0].benchmark_time_ms, benchmark_time);
+}
+
+TEST(CacheStoreSpec, InsertWithZeroBenchmarkTime)
+{
+    CacheStore store;
+    CacheKey key("gfx1100", "kernel", "ctx");
+    TuningConfig config;
+
+    store.insert(key, config, 0.0f);
+
+    const auto &entries = store.entries();
+    ASSERT_EQ(entries.size(), 1u);
+    EXPECT_FLOAT_EQ(entries[0].benchmark_time_ms, 0.0f);
+}
+
+TEST(CacheStoreSpec, InsertWithNegativeBenchmarkTime)
+{
+    CacheStore store;
+    CacheKey key("gfx1100", "kernel", "ctx");
+    TuningConfig config;
+
+    store.insert(key, config, -1.0f);
+
+    const auto &entries = store.entries();
+    ASSERT_EQ(entries.size(), 1u);
+    EXPECT_FLOAT_EQ(entries[0].benchmark_time_ms, -1.0f);
+}
+
+TEST(CacheStoreSpec, LoadFromStringWithValidJson)
+{
+    std::string json_content = R"({
+        "version": "2.0",
+        "entries": [
+            {
+                "gpu_arch": "gfx1100",
+                "kernel_name": "test_kernel",
+                "context": "test_ctx",
+                "config": "block_x=256,block_y=1",
+                "benchmark_time_ms": 1.5
+            }
+        ]
+    })";
+
+    CacheStore store;
+    bool success = store.load_from_string(json_content.c_str());
+
+    EXPECT_TRUE(success);
+    EXPECT_EQ(store.size(), 1u);
+
+    CacheKey key("gfx1100", "test_kernel", "test_ctx");
+    EXPECT_TRUE(store.contains(key));
+}
+
+TEST(CacheStoreSpec, LoadFromStringWithEmptyJson)
+{
+    std::string json_content = "{}";
+
+    CacheStore store;
+    bool success = store.load_from_string(json_content.c_str());
+
+    // Empty JSON might be considered valid but with no entries
+    EXPECT_EQ(store.size(), 0u);
+}
+
+TEST(CacheStoreSpec, LoadFromStringWithInvalidJson)
+{
+    std::string invalid_json = "not valid json at all";
+
+    CacheStore store;
+    bool success = store.load_from_string(invalid_json.c_str());
+
+    EXPECT_FALSE(success);
+    EXPECT_EQ(store.size(), 0u);
+}
+
+TEST(CacheStoreSpec, LoadFromStringWithMalformedJson)
+{
+    std::string malformed = R"({"version": "2.0", "entries": [})"; // Incomplete
+
+    CacheStore store;
+    bool success = store.load_from_string(malformed.c_str());
+
+    EXPECT_FALSE(success);
+}
+
+TEST(CacheStoreSpec, SaveToNonExistentDirectory)
+{
+    CacheStore store;
+    CacheKey key("gfx1100", "kernel", "ctx");
+    TuningConfig config;
+    store.insert(key, config);
+
+    // Try to save to a path with non-existent parent directory
+    std::filesystem::path bad_path = std::filesystem::temp_directory_path() / "nonexistent_dir_12345" / "cache.json";
+
+    bool success = store.save(bad_path.string());
+
+    // Should handle gracefully (either create dir or return false)
+    // Exact behavior depends on implementation
+    if (success)
+    {
+        EXPECT_TRUE(std::filesystem::exists(bad_path));
+        std::filesystem::remove_all(bad_path.parent_path());
+    }
+}
+
+TEST(CacheStoreSpec, LoadFromNonExistentFile)
+{
+    CacheStore store;
+    std::string nonexistent = "/tmp/cache_that_does_not_exist_99999.json";
+
+    bool success = store.load(nonexistent);
+
+    EXPECT_FALSE(success);
+    EXPECT_EQ(store.size(), 0u);
+}
+
+TEST(CacheStoreSpec, EntriesReturnsConstReference)
+{
+    CacheStore store;
+    CacheKey key1("gfx1100", "kernel1", "ctx1");
+    CacheKey key2("gfx1100", "kernel2", "ctx2");
+
+    TuningConfig config;
+    store.insert(key1, config);
+    store.insert(key2, config);
+
+    const auto &entries = store.entries();
+
+    EXPECT_EQ(entries.size(), 2u);
+
+    // Verify we can iterate and read
+    int count = 0;
+    for (const auto &entry : entries)
+    {
+        EXPECT_FALSE(entry.key.kernel_name.empty());
+        count++;
+    }
+    EXPECT_EQ(count, 2);
+}
+
+TEST(CacheStoreSpec, ClearSetsModifiedEvenWhenEmpty)
+{
+    CacheStore store;
+    EXPECT_FALSE(store.is_modified());
+
+    store.clear();
+
+    EXPECT_TRUE(store.is_modified());
+}
+
+TEST(CacheStoreSpec, MultipleInsertsForSameKeyOverwrites)
+{
+    CacheStore store;
+    CacheKey key("gfx1100", "kernel", "ctx");
+
+    TuningConfig config1;
+    config1.set("block_x", 128);
+    store.insert(key, config1, 1.0f);
+
+    TuningConfig config2;
+    config2.set("block_x", 256);
+    store.insert(key, config2, 2.0f);
+
+    EXPECT_EQ(store.size(), 1u); // Should still be 1
+
+    auto result = store.lookup(key);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->block_x(), 256); // Should have second value
+
+    const auto &entries = store.entries();
+    ASSERT_EQ(entries.size(), 1u);
+    EXPECT_FLOAT_EQ(entries[0].benchmark_time_ms, 2.0f);
+}
+
+TEST(CacheStoreSpec, LookupAfterRemoveIfReturnsEmpty)
+{
+    CacheStore store;
+    CacheKey key("gfx1100", "kernel", "ctx");
+    TuningConfig config;
+    store.insert(key, config);
+
+    EXPECT_TRUE(store.lookup(key).has_value());
+
+    store.remove_if([&key](const CacheEntry &entry)
+                    { return entry.key == key; });
+
+    EXPECT_FALSE(store.lookup(key).has_value());
+}

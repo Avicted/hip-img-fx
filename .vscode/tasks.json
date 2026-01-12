@@ -1,209 +1,214 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Meson: Configure",
-            "type": "shell",
-            "command": "meson setup build --native-file native/hip.ini --reconfigure",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "shared",
-                "focus": false,
-                "clear": true
-            }
-        },
-        {
-            "label": "Meson: Build",
-            "type": "shell",
-            "command": "ninja -C build",
-            "dependsOn": [
-                "Meson: Configure"
-            ],
-            "group": "build",
-            "problemMatcher": [
-                "$gcc"
-            ],
-            "presentation": {
-                "reveal": "always",
-                "panel": "shared",
-                "focus": false,
-                "clear": true
-            }
-        },
-        {
-            "label": "Meson: Clean",
-            "type": "shell",
-            "command": "ninja -C build clean",
-            "group": "build",
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "shared",
-                "focus": false,
-                "clear": true
-            }
-        },
-        {
-            "label": "Meson: Rebuild",
-            "type": "shell",
-            "command": "ninja -C build clean && ninja -C build",
-            "dependsOn": [],
-            "group": "build",
-            "problemMatcher": [
-                "$gcc"
-            ],
-            "presentation": {
-                "reveal": "always",
-                "panel": "shared",
-                "focus": false,
-                "clear": true
-            }
-        },
-        {
-            "label": "Test: All",
-            "type": "shell",
-            "command": "meson test -C build --print-errorlogs",
-            "dependsOn": [
-                "Meson: Build"
-            ],
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            },
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "shared",
-                "focus": true,
-                "clear": true
-            }
-        },
-        {
-            "label": "Test: CPU Only",
-            "type": "shell",
-            "command": "meson test -C build --suite cpu --print-errorlogs",
-            "dependsOn": [
-                "Meson: Build"
-            ],
-            "group": "test",
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "shared",
-                "focus": true,
-                "clear": true
-            }
-        },
-        {
-            "label": "Test: Run Executable",
-            "type": "shell",
-            "command": "./build/hip-img-fx-tests",
-            "dependsOn": [
-                "Meson: Build"
-            ],
-            "group": "test",
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "focus": true,
-                "clear": true
-            }
-        },
-        {
-            "label": "Test: Verbose",
-            "type": "shell",
-            "command": "meson test -C build --verbose --print-errorlogs",
-            "dependsOn": [
-                "Meson: Build"
-            ],
-            "group": "test",
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "shared",
-                "focus": true,
-                "clear": true
-            }
-        },
-        {
-            "label": "Test: Coverage Report",
-            "type": "shell",
-            "command": "meson setup build --native-file native/hip.ini -Db_coverage=true --reconfigure && ninja -C build && meson test -C build --print-errorlogs && ninja -C build coverage-html",
-            "group": "test",
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "shared",
-                "focus": true,
-                "clear": true
-            }
-        },
-        {
-            "label": "Meson: Install",
-            "type": "shell",
-            "command": "meson install -C build",
-            "dependsOn": [
-                "Meson: Build"
-            ],
-            "group": "build",
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "shared",
-                "focus": false,
-                "clear": true
-            }
-        },
-        {
-            "label": "Run: hip-img-fx",
-            "type": "shell",
-            "command": "./build/hip-img-fx",
-            "dependsOn": [
-                "Meson: Build"
-            ],
-            "group": "none",
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "focus": true,
-                "clear": true
-            }
-        },
-        {
-            "label": "Run: Benchmarks",
-            "type": "shell",
-            "command": "./build/hip-img-fx-bench",
-            "dependsOn": [
-                "Meson: Build"
-            ],
-            "group": "test",
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "focus": true,
-                "clear": true
-            }
-        },
-        {
-            "label": "Meson: Compile Commands",
-            "type": "shell",
-            "command": "meson setup build --native-file native/hip.ini --reconfigure && ln -sf build/compile_commands.json compile_commands.json",
-            "group": "none",
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "shared",
-                "focus": false,
-                "clear": true
-            }
-        }
-    ]
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Meson: Configure",
+			"type": "shell",
+			"command": "meson setup build --native-file native/hip.ini --reconfigure",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"focus": false,
+				"clear": true
+			}
+		},
+		{
+			"label": "Meson: Build",
+			"type": "shell",
+			"command": "ninja -C build",
+			"dependsOn": [
+				"Meson: Configure"
+			],
+			"group": "build",
+			"problemMatcher": [
+				"$gcc"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"focus": false,
+				"clear": true
+			}
+		},
+		{
+			"label": "Meson: Clean",
+			"type": "shell",
+			"command": "ninja -C build clean",
+			"group": "build",
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"focus": false,
+				"clear": true
+			}
+		},
+		{
+			"label": "Meson: Rebuild",
+			"type": "shell",
+			"command": "ninja -C build clean && ninja -C build",
+			"dependsOn": [],
+			"group": "build",
+			"problemMatcher": [
+				"$gcc"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"focus": false,
+				"clear": true
+			}
+		},
+		{
+			"label": "Test: All",
+			"type": "shell",
+			"command": "meson test -C build --print-errorlogs",
+			"dependsOn": [
+				"Meson: Build"
+			],
+			"group": {
+				"kind": "test",
+				"isDefault": true
+			},
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"focus": true,
+				"clear": true
+			}
+		},
+		{
+			"label": "Test: CPU Only",
+			"type": "shell",
+			"command": "meson test -C build --suite cpu --print-errorlogs",
+			"dependsOn": [
+				"Meson: Build"
+			],
+			"group": "test",
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"focus": true,
+				"clear": true
+			}
+		},
+		{
+			"label": "Test: Run Executable",
+			"type": "shell",
+			"command": "./build/hip-img-fx-tests",
+			"dependsOn": [
+				"Meson: Build"
+			],
+			"group": "test",
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"focus": true,
+				"clear": true
+			}
+		},
+		{
+			"label": "Test: Verbose",
+			"type": "shell",
+			"command": "meson test -C build --verbose --print-errorlogs",
+			"dependsOn": [
+				"Meson: Build"
+			],
+			"group": "test",
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"focus": true,
+				"clear": true
+			}
+		},
+		{
+			"label": "Test: Coverage Report",
+			"type": "shell",
+			"command": "meson setup build --native-file native/hip.ini -Db_coverage=true --reconfigure && ninja -C build && meson test -C build --print-errorlogs && ninja -C build coverage-html",
+			"group": "test",
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"focus": true,
+				"clear": true
+			}
+		},
+		{
+			"label": "Meson: Install",
+			"type": "shell",
+			"command": "meson install -C build",
+			"dependsOn": [
+				"Meson: Build"
+			],
+			"group": "build",
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"focus": false,
+				"clear": true
+			}
+		},
+		{
+			"label": "Run: hip-img-fx",
+			"type": "shell",
+			"command": "./build/hip-img-fx",
+			"dependsOn": [
+				"Meson: Build"
+			],
+			"group": "none",
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"focus": true,
+				"clear": true
+			}
+		},
+		{
+			"label": "Run: Benchmarks",
+			"type": "shell",
+			"command": "./build/hip-img-fx-bench",
+			"dependsOn": [
+				"Meson: Build"
+			],
+			"group": "test",
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"focus": true,
+				"clear": true
+			}
+		},
+		{
+			"label": "Meson: Compile Commands",
+			"type": "shell",
+			"command": "meson setup build --native-file native/hip.ini --reconfigure && ln -sf build/compile_commands.json compile_commands.json",
+			"group": "none",
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"focus": false,
+				"clear": true
+			}
+		},
+		{
+			"label": "Build Tests",
+			"type": "shell",
+			"command": "ninja -C build"
+		}
+	]
 }

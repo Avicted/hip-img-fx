@@ -116,6 +116,8 @@ if gtest_dep.found()
     'tests/test_cache_store_spec.cpp',
     'tests/test_hip_event_spec.cpp',
     'tests/test_benchmarker_spec.cpp',
+    'tests/test_orchestrator_spec.cpp',
+    'tests/test_kernel_traits_concepts_spec.cpp',
     
     # Include source files needed for tests
     'src/core/gpu_utils.cpp',

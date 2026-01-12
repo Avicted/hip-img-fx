@@ -73,6 +73,75 @@ executable(
 )
 
 # ============================================================================
+# TESTS
+# ============================================================================
+
+gtest_dep = dependency('gtest', main: false, required: false)
+
+if gtest_dep.found()
+  test_src = files(
+    'tests/test_main.cpp',
+    'tests/test_helpers.cpp',
+    'tests/test_filters_cpu.cpp',
+    'tests/test_filters_gpu.cpp',
+    'tests/test_image_io.cpp',
+    'tests/test_cli_parser.cpp',
+    'tests/test_autotune_config.cpp',
+    'tests/test_cache_store.cpp',
+    'tests/test_gpu_integration.cpp',
+    'tests/test_image_formats.cpp',
+    'tests/test_gpu_utils.cpp',
+    'tests/test_autotune_extended.cpp',
+    'tests/test_process.cpp',
+    
+    # Include source files needed for tests
+    'src/core/gpu_utils.cpp',
+    'src/core/image.cpp',
+    'src/core/autotune/tuning_config.cpp',
+    'src/core/autotune/cache_store.cpp',
+    'src/cli/cli_parser.cpp',
+    'src/app/process.cpp',
+    'src/filters/grayscale.hip.cpp',
+    'src/filters/grayscale_autotune.hip.cpp',
+    'src/filters/negative.hip.cpp',
+    'src/filters/negative_autotune.hip.cpp',
+    'src/filters/gaussian_blur.hip.cpp',
+    'src/filters/gaussian_blur_autotune.hip.cpp',
+  )
+  
+  # Determine test build arguments (add coverage if enabled)
+  test_cpp_args = app_warning_args + ['-fopenmp', '-march=native', gpu_arch]
+  test_link_args = ['-fopenmp', '-march=native', gpu_arch]
+  
+  if get_option('b_coverage')
+    test_cpp_args += ['--coverage']
+    test_link_args += ['--coverage']
+  endif
+  
+  test_exe = executable(
+    'hip-img-fx-tests',
+    test_src,
+    cpp_args: test_cpp_args,
+    link_args: test_link_args,
+    include_directories: [inc_src, inc_sys],
+    dependencies: [gtest_dep],
+    install: false,
+  )
+  
+  # Register with Meson test framework
+  test('unit_tests', test_exe, timeout: 120)
+  
+  # CPU-only tests (for CI without GPU)
+  test('unit_tests_cpu_only', test_exe, 
+       args: ['--gtest_filter=-*GPU*'],
+       timeout: 60,
+       suite: 'cpu')
+  
+else
+  warning('GoogleTest not found - tests will not be built. Install with: sudo apt-get install libgtest-dev')
+endif
+
+# ============================================================================
 # PUBLIC API INSTALLATION
 # ============================================================================
 

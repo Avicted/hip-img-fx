@@ -65,12 +65,76 @@
             }
         },
         {
-            "label": "Meson: Test",
+            "label": "Test: All",
             "type": "shell",
-            "command": "meson test -C build",
+            "command": "meson test -C build --print-errorlogs",
             "dependsOn": [
                 "Meson: Build"
             ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": true,
+                "clear": true
+            }
+        },
+        {
+            "label": "Test: CPU Only",
+            "type": "shell",
+            "command": "meson test -C build --suite cpu --print-errorlogs",
+            "dependsOn": [
+                "Meson: Build"
+            ],
+            "group": "test",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": true,
+                "clear": true
+            }
+        },
+        {
+            "label": "Test: Run Executable",
+            "type": "shell",
+            "command": "./build/hip-img-fx-tests",
+            "dependsOn": [
+                "Meson: Build"
+            ],
+            "group": "test",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "focus": true,
+                "clear": true
+            }
+        },
+        {
+            "label": "Test: Verbose",
+            "type": "shell",
+            "command": "meson test -C build --verbose --print-errorlogs",
+            "dependsOn": [
+                "Meson: Build"
+            ],
+            "group": "test",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": true,
+                "clear": true
+            }
+        },
+        {
+            "label": "Test: Coverage Report",
+            "type": "shell",
+            "command": "meson setup build --native-file native/hip.ini -Db_coverage=true --reconfigure && ninja -C build && meson test -C build --print-errorlogs && ninja -C build coverage-html",
             "group": "test",
             "problemMatcher": [],
             "presentation": {

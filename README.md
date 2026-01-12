@@ -301,17 +301,57 @@ process_batch_gpu(images, filter, batch_size);
 
 ## Testing & Validation
 
-### Build & Run Tests
+### Comprehensive Test Suite
+
+The project includes **100 tests** covering all major components:
 
 ```bash
-# Build with debugging enabled
-meson setup build --native-file native/hip.ini --reconfigure
-ninja -C build
+# Run all tests (81 CPU + 19 GPU tests)
+meson test -C build --print-errorlogs
 
-# Run benchmark suite (includes correctness validation)
+# Run CPU-only tests (for CI without GPU)
+meson test -C build --suite cpu
+
+# Run tests directly with GoogleTest
+./build/hip-img-fx-tests
+./build/hip-img-fx-tests --gtest_filter="FiltersCPU.*"
+
+# Generate coverage report
+./scripts/generate_coverage.sh
+xdg-open build/meson-logs/coveragereport/index.html
+```
+
+**Test Coverage:**
+- CPU Filters: 7 tests (correctness validation)
+- GPU Filters: 6 tests (CPU vs GPU comparison)
+- Image I/O: 18 tests (load/save/formats)
+- CLI Parser: 7 tests (argument parsing)
+- Autotuning: 31 tests (config & cache management)
+- GPU Integration: 6 tests (memory & batch processing)
+- GPU Utils: 11 tests (device queries & filters)
+- Process Functions: 14 tests (batch & single processing)
+
+**Coverage Metrics:**
+- Line Coverage: 49.6%
+- Function Coverage: 73.7%
+- Branch Coverage: 30.3%
+
+See [tests/README.md](tests/README.md) for detailed testing documentation.
+
+### VSCode Integration
+
+Run tests from Command Palette (`Ctrl+Shift+P` → `Tasks: Run Task`):
+- **Test: All** - Run all tests
+- **Test: CPU Only** - Run CPU tests only
+- **Test: Coverage Report** - Generate coverage report
+
+### Correctness Validation
+
+```bash
+# Benchmark includes correctness checks
 ./build/hip-img-fx-bench --iterations 5
 
-# Compare CPU vs GPU outputs (should be identical)
+# Manual CPU vs GPU comparison
 ./build/hip-img-fx --filter negative --input test.jpg --output gpu_out.jpg
 ./build/hip-img-fx --filter negative --input test.jpg --output cpu_out.jpg --use-cpu
 diff <(xxd gpu_out.jpg) <(xxd cpu_out.jpg)

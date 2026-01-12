@@ -20,8 +20,6 @@
  *     // Validate at compile time
  *     static_assert(ValidKernelTraits<MyKernelTraits>);
  *
- * @author Autotuning Framework Team
- * @date January 2026
  */
 
 #include <concepts>

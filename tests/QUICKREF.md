@@ -51,7 +51,7 @@ The test suite includes comprehensive coverage across multiple categories:
 
 **Total: ~690 tests across 33 test files**
 
-**Coverage Statistics (v1.0.1):**
+**Coverage Statistics (v1.1.0):**
 - **Line Coverage**: 71.0% (11213/15801 lines)
 - **Function Coverage**: 92.2% (2540/2756 functions)
 - **Branch Coverage**: 33.2% (15514/46698 branches)

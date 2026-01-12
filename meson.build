@@ -1,5 +1,5 @@
 project('hip-img-fx', 'cpp',
-  version: '1.0.1',
+  version: '1.1.0',
   default_options: [
     'cpp_std=c++20',
     'b_lto=true',

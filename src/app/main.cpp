@@ -15,7 +15,8 @@ namespace fs = std::filesystem;
 inline std::vector<std::string> gather_files(const fs::path &input);
 inline void print_elapsed_time(const std::chrono::steady_clock::time_point &start);
 
-int main(int argc, char **argv)
+// Extracted main logic for testability
+int app_main(int argc, char **argv)
 {
     const auto start_time = std::chrono::steady_clock::now();
     printf("============================\n");
@@ -83,6 +84,13 @@ int main(int argc, char **argv)
     print_elapsed_time(start_time);
     return ret_code;
 }
+
+#ifndef BUILDING_TESTS
+int main(int argc, char **argv)
+{
+    return app_main(argc, argv);
+}
+#endif
 
 inline std::vector<std::string> gather_files(const fs::path &input)
 {

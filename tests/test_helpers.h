@@ -76,4 +76,18 @@ namespace test_helpers
      */
     void fill_random_image(unsigned char *data, size_t size, unsigned int seed = 42);
 
+    /**
+     * @brief Calculate pixel variance for an image (uses first channel)
+     * @param img Image data
+     * @param width Image width
+     * @param height Image height
+     * @param channels Number of channels per pixel
+     * @return Variance value (0 = uniform, higher = more variation)
+     */
+    double calculate_image_variance(
+        const unsigned char *img,
+        int width,
+        int height,
+        int channels);
+
 } // namespace test_helpers

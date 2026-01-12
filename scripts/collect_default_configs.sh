@@ -101,7 +101,7 @@ if [ -f .autotune_cache.json ]; then
     echo "Saved configs to: $OUTPUT_FILE"
     echo ""
     echo "To embed this in the binary, run:"
-    echo "  ./bench/scripts/merge_default_caches.py $OUTPUT_FILE > include/hip-img-fx/autotune/embedded_cache.h"
+    echo "  ./scripts/merge_default_caches.py $OUTPUT_FILE > include/hip-img-fx/autotune/embedded_cache.h"
     echo ""
 else
     echo ""

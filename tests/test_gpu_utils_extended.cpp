@@ -7,17 +7,9 @@
  * @brief Additional tests for GPU utilities - edge cases and utility functions
  *
  * These tests cover utility functions and edge cases that may not be covered
- * by the main GPU integration tests.
+ * by the main GPU integration tests. Note: FilterTypeToString is tested in
+ * test_gpu_utils.cpp and is not duplicated here.
  */
-
-TEST(GPUUtilsExtended, FilterTypeToStringAllTypes)
-{
-    // Test all filter type conversions
-    EXPECT_EQ(imgfx::core::filter_type_to_string(imgfx::core::FILTER_TYPE::UNDEFINED), "UNDEFINED");
-    EXPECT_EQ(imgfx::core::filter_type_to_string(imgfx::core::FILTER_TYPE::GRAYSCALE), "GRAYSCALE");
-    EXPECT_EQ(imgfx::core::filter_type_to_string(imgfx::core::FILTER_TYPE::NEGATIVE), "NEGATIVE");
-    EXPECT_EQ(imgfx::core::filter_type_to_string(imgfx::core::FILTER_TYPE::GAUSSIAN_BLUR), "GAUSSIAN_BLUR");
-}
 
 TEST(GPUUtilsExtended, GaussianBlurAmountConstant)
 {

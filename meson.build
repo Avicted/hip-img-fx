@@ -93,24 +93,17 @@ if gtest_dep.found()
     'tests/test_gpu_utils.cpp',
     'tests/test_autotune_extended.cpp',
     'tests/test_process.cpp',
-    # New extended test files
     'tests/test_image_edge_cases.cpp',
     'tests/test_gpu_utils_extended.cpp',
     'tests/test_process_extended.cpp',
     'tests/test_helpers_extended.cpp',
     'tests/test_filters_cpu_extended.cpp',
-    # Additional extended test files for increased coverage
     'tests/test_tuning_config_extended.cpp',
     'tests/test_cli_parser_extended.cpp',
     'tests/test_filters_traits.cpp',
-    # Error path and edge case tests
-    # Death tests removed - see tests/test_cli_parser_notes.md for explanation
-    # 'tests/test_cli_parser_death_tests.cpp',
     'tests/test_generate_candidates.cpp',
     'tests/test_process_errors.cpp',
-    # Main application flow tests
     'tests/test_main_app.cpp',
-    # Public API specification tests (following SKILL.md guidelines)
     'tests/test_tuning_options_spec.cpp',
     'tests/test_tuning_config_spec.cpp',
     'tests/test_cache_store_spec.cpp',
@@ -118,6 +111,7 @@ if gtest_dep.found()
     'tests/test_benchmarker_spec.cpp',
     'tests/test_orchestrator_spec.cpp',
     'tests/test_kernel_traits_concepts_spec.cpp',
+    'tests/test_benchmark_runner.cpp',
     
     # Include source files needed for tests
     'src/core/gpu_utils.cpp',
@@ -133,6 +127,7 @@ if gtest_dep.found()
     'src/filters/negative_autotune.hip.cpp',
     'src/filters/gaussian_blur.hip.cpp',
     'src/filters/gaussian_blur_autotune.hip.cpp',
+    'bench/run_bench.cpp',
   )
   
   # Determine test build arguments (add coverage if enabled)

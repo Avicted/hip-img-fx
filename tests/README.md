@@ -10,27 +10,57 @@ The hip-img-fx project includes comprehensive tests covering filters, image I/O,
 
 ```
 tests/
-├── test_main.cpp                # Main entry with GPU detection
-├── test_helpers.h/cpp           # Utility functions for test data generation
-├── test_filters_cpu.cpp         # CPU filter correctness tests (7 tests)
-├── test_filters_gpu.cpp         # GPU vs CPU validation tests (6 tests)
-├── test_image_io.cpp            # Image loading/saving tests (6 tests)
-├── test_image_formats.cpp       # Extended format tests (12 tests)
-├── test_cli_parser.cpp          # CLI argument parsing tests (7 tests)
-├── test_autotune_config.cpp     # TuningConfig validation tests (1 test)
-├── test_autotune_extended.cpp   # Extended autotune tests (26 tests)
-├── test_cache_store.cpp         # Cache persistence tests (4 tests)
-├── test_gpu_integration.cpp     # GPU memory/batch tests (6 tests)
-├── test_gpu_utils.cpp           # GPU utility tests (11 tests)
-└── test_process.cpp             # Process function tests (14 tests)
+├── test_main.cpp                       # Main entry with GPU detection
+├── test_helpers.h/cpp                  # Utility functions for test data generation
+│
+├── Core Filters & Processing
+├── test_filters_cpu.cpp                # CPU filter correctness tests
+├── test_filters_cpu_extended.cpp       # Extended CPU filter tests
+├── test_filters_gpu.cpp                # GPU vs CPU validation tests
+├── test_filters_traits.cpp             # Filter trait system tests
+├── test_process.cpp                    # Process function tests
+├── test_process_extended.cpp           # Extended process tests
+├── test_process_errors.cpp             # Process error handling tests
+│
+├── Image I/O
+├── test_image_io.cpp                   # Image loading/saving tests
+├── test_image_formats.cpp              # Extended format tests
+├── test_image_edge_cases.cpp           # Edge case handling tests
+│
+├── CLI & Application
+├── test_cli_parser.cpp                 # CLI argument parsing tests
+├── test_cli_parser_extended.cpp        # Extended CLI tests
+├── test_cli_parser_death_tests.cpp     # CLI death/error tests
+├── test_main_app.cpp                   # Main application tests
+│
+├── GPU Infrastructure
+├── test_gpu_utils.cpp                  # GPU utility tests
+├── test_gpu_utils_extended.cpp         # Extended GPU utility tests
+├── test_gpu_integration.cpp            # GPU memory/batch tests
+│
+├── Autotuning Framework
+├── test_autotune_config.cpp            # TuningConfig validation tests
+├── test_autotune_extended.cpp          # Extended autotune tests
+├── test_cache_store.cpp                # Cache persistence tests
+├── test_cache_store_spec.cpp           # Cache store specification tests
+├── test_tuning_config_spec.cpp         # TuningConfig specification tests
+├── test_tuning_options_spec.cpp        # TuningOptions specification tests
+├── test_orchestrator_spec.cpp          # Orchestrator specification tests
+├── test_benchmarker_spec.cpp           # Benchmarker specification tests
+├── test_hip_event_spec.cpp             # HIP event wrapper tests
+├── test_kernel_traits_concepts_spec.cpp # Kernel traits & concepts tests
+├── test_generate_candidates.cpp        # Candidate generation tests
+│
+└── Benchmarking
+    └── test_benchmark_runner.cpp       # Benchmark utility function tests
 ```
 
-**Total: 100 tests across 13 test files**
+**Total: ~690 tests across 33 test files**
 
-**Coverage Achieved:**
-- **Line Coverage**: 49.6% (4617/9308 lines)
-- **Function Coverage**: 73.7% (585/794 functions)
-- **Branch Coverage**: 30.3% (3816/12596 branches)
+**Coverage Achieved (as of v1.0.1):**
+- **Line Coverage**: 71.0% (11213/15801 lines)
+- **Function Coverage**: 92.2% (2540/2756 functions)
+- **Branch Coverage**: 33.2% (15514/46698 branches)
 
 ## Building Tests
 

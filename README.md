@@ -165,7 +165,7 @@ Notes:
 
 ```bash
 # Full benchmark sweep (512² → 4096², 3 filters)
-./bench/scripts/run_benchmark.sh
+./scripts/run_benchmark.sh
 
 # Custom benchmark configuration
 ./build/hip-img-fx-bench \
@@ -176,7 +176,7 @@ Notes:
 
 # Analyze results (uses matplotlib & pandas in isolated venv)
 # Automatically creates venv, installs dependencies, generates visualizations
-./bench/scripts/run_analysis.sh bench/results/benchmark_*.csv
+./scripts/run_analysis.sh bench/results/benchmark_*.csv
 ```
 
 ### What Gets Benchmarked
@@ -420,7 +420,7 @@ int threads = 512;  // Tune: 256, 512, 1024
 ### Python Analysis Script
 
 ```bash
-./bench/scripts/run_analysis.sh results.csv
+./scripts/run_analysis.sh results.csv
 ```
 
 **Output**:

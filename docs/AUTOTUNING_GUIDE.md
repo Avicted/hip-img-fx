@@ -660,7 +660,7 @@ The framework includes embedded default configurations for gfx1030 (AMD RX 6900 
 Run the collection script to generate optimal configs for your hardware:
 
 ```bash
-./bench/scripts/collect_default_configs.sh
+./scripts/collect_default_configs.sh
 ```
 
 This will:
@@ -676,7 +676,7 @@ This will:
 Convert the JSON file to C++ header format:
 
 ```bash
-./bench/scripts/merge_default_caches.py default_configs_*.json > include/hip-img-fx/autotune/embedded_cache.h
+./scripts/merge_default_caches.py default_configs_*.json > include/hip-img-fx/autotune/embedded_cache.h
 ```
 
 ### Step 3: Rebuild
@@ -693,11 +693,11 @@ To support multiple GPU architectures in one binary:
 
 ```bash
 # Collect on each GPU
-./bench/scripts/collect_default_configs.sh  # On GPU 1 → default_configs_gfx1030.json
-./bench/scripts/collect_default_configs.sh  # On GPU 2 → default_configs_gfx1100.json
+./scripts/collect_default_configs.sh  # On GPU 1 → default_configs_gfx1030.json
+./scripts/collect_default_configs.sh  # On GPU 2 → default_configs_gfx1100.json
 
 # Merge all into one header
-./bench/scripts/merge_default_caches.py default_configs_*.json > include/hip-img-fx/autotune/embedded_cache.h
+./scripts/merge_default_caches.py default_configs_*.json > include/hip-img-fx/autotune/embedded_cache.h
 ```
 
 The framework automatically selects the correct configs based on `hipDeviceGetProperties()`.
@@ -713,7 +713,7 @@ The framework automatically selects the correct configs based on `hipDeviceGetPr
 - **[Source Code](../include/hip-img-fx/autotune/)** - Framework implementation headers
 - **[Main README](../README.md)** - Project overview and installation
 - **[Examples](../examples/)** - Sample images for testing
-- **[Benchmark Scripts](../bench/scripts/)** - Config generation tools
+- **[Benchmark Scripts](../scripts/)** - Config generation tools
 
 ---
 

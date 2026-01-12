@@ -9,6 +9,7 @@
  * Usage: ./build/hip-img-fx-bench [--warmup N] [--iterations N] [--output results.csv]
  */
 
+#include "bench_functions.h"
 #include "../src/core/gpu_utils.h"
 #include "../src/core/image.h"
 #include <chrono>
@@ -56,9 +57,9 @@ struct BenchResult
     double bandwidth_gb_s = 0.0;
 };
 
-image_t generate_test_image(int width, int height, int channels)
+bench_image_t generate_test_image(int width, int height, int channels)
 {
-    image_t img;
+    bench_image_t img;
     img.width = width;
     img.height = height;
     img.channels = channels;
@@ -91,7 +92,7 @@ image_t generate_test_image(int width, int height, int channels)
     return img;
 }
 
-static void free_test_image(image_t &img)
+void free_test_image(bench_image_t &img)
 {
     if (img.data)
     {
@@ -117,7 +118,7 @@ double calculate_std_dev(const std::vector<double> &values, double mean)
     return std::sqrt(sum_sq_diff / (values.size() - 1));
 }
 
-double bench_cpu_single(FILTER_TYPE filter, image_t &input, image_t &output, int iterations)
+double bench_cpu_single(FILTER_TYPE filter, bench_image_t &input, bench_image_t &output, int iterations)
 {
     // Disable OpenMP for single-threaded test
     int original_threads = omp_get_max_threads();
@@ -147,7 +148,7 @@ double bench_cpu_single(FILTER_TYPE filter, image_t &input, image_t &output, int
     return sum / times.size();
 }
 
-double bench_cpu_omp(FILTER_TYPE filter, image_t &input, image_t &output, int iterations)
+double bench_cpu_omp(FILTER_TYPE filter, bench_image_t &input, bench_image_t &output, int iterations)
 {
     std::vector<double> times;
 
@@ -221,17 +222,23 @@ void run_benchmark_suite(const BenchConfig &config)
                 // CPU baselines are measured per-image on a single synthetic image.
                 // GPU is measured as a batched call (batch_size images) and then converted
                 // to per-image time by dividing by batch_size.
-                image_t cpu_input = generate_test_image(res, res, channels);
-                image_t cpu_output = generate_test_image(res, res, channels);
+                bench_image_t cpu_input = generate_test_image(res, res, channels);
+                bench_image_t cpu_output = generate_test_image(res, res, channels);
 
-                std::vector<image_t> gpu_inputs;
-                std::vector<image_t> gpu_outputs;
+                std::vector<imgfx::core::image_t> gpu_inputs;
+                std::vector<imgfx::core::image_t> gpu_outputs;
                 gpu_inputs.reserve(batch_size);
                 gpu_outputs.reserve(batch_size);
                 for (int i = 0; i < batch_size; ++i)
                 {
-                    gpu_inputs.push_back(generate_test_image(res, res, channels));
-                    gpu_outputs.push_back(generate_test_image(res, res, channels));
+                    bench_image_t bench_in = generate_test_image(res, res, channels);
+                    bench_image_t bench_out = generate_test_image(res, res, channels);
+
+                    imgfx::core::image_t gpu_in{bench_in.data, bench_in.width, bench_in.height, bench_in.channels};
+                    imgfx::core::image_t gpu_out{bench_out.data, bench_out.width, bench_out.height, bench_out.channels};
+
+                    gpu_inputs.push_back(gpu_in);
+                    gpu_outputs.push_back(gpu_out);
                 }
 
                 if (config.verbose)
@@ -346,11 +353,19 @@ void run_benchmark_suite(const BenchConfig &config)
                 free_test_image(cpu_output);
                 for (auto &img : gpu_inputs)
                 {
-                    free_test_image(img);
+                    if (img.data)
+                    {
+                        free(img.data);
+                        img.data = nullptr;
+                    }
                 }
                 for (auto &img : gpu_outputs)
                 {
-                    free_test_image(img);
+                    if (img.data)
+                    {
+                        free(img.data);
+                        img.data = nullptr;
+                    }
                 }
             }
         }
@@ -408,6 +423,7 @@ void print_usage(const char *prog_name)
     printf("  --help            Show this help message\n");
 }
 
+#ifndef BUILDING_TESTS
 int main(int argc, char **argv)
 {
     BenchConfig config;
@@ -449,3 +465,4 @@ int main(int argc, char **argv)
 
     return 0;
 }
+#endif // BUILDING_TESTS

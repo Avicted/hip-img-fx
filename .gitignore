@@ -7,7 +7,7 @@ examples/output/
 
 examples/*
 
-bench/scripts/hip_img_fx_venv/
+scripts/hip_img_fx_venv/
 
 # Autotuning cache files
 .autotune_cache*

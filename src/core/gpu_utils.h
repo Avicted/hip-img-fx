@@ -28,7 +28,9 @@ namespace imgfx::core
         }
     }
 
+#ifndef HIP_ERRCHK
 #define HIP_ERRCHK(err) (imgfx::core::hip_errchk(err, __FILE__, __LINE__))
+#endif
 
     // GPU Timing Infrastructure
     struct GPUTimings

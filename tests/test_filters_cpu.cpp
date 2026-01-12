@@ -33,7 +33,7 @@ TEST(FiltersCPU, GrayscaleKnownValues)
     imgfx::filters::grayscale_cpu(input, output, width, height, channels);
 
     // Expected: 0.21*100 + 0.72*150 + 0.07*200 = 21 + 108 + 14 = 143
-    unsigned char expected = 143;
+    constexpr unsigned char expected = 143;
 
     for (int i = 0; i < width * height; ++i)
     {
@@ -79,37 +79,17 @@ TEST(FiltersCPU, GaussianBlurSmoothness)
     constexpr int height = 64;
     constexpr int channels = 3;
 
-    auto input = test_helpers::generate_checkerboard_image(width, height, channels, 8);
+    const auto input = test_helpers::generate_checkerboard_image(width, height, channels, 8);
     std::vector<unsigned char> output(input.size());
 
     imgfx::filters::gaussian_blur_cpu(input.data(), output.data(),
                                       width, height, channels, 11);
 
-    // Calculate variance before and after blur
-    auto calc_variance = [](const std::vector<unsigned char> &img, int channels) -> double
-    {
-        double sum = 0.0;
-        int count = img.size() / channels;
-
-        for (size_t i = 0; i < img.size(); i += channels)
-        {
-            sum += img[i]; // Use R channel
-        }
-
-        double mean = sum / count;
-        double variance = 0.0;
-
-        for (size_t i = 0; i < img.size(); i += channels)
-        {
-            double diff = img[i] - mean;
-            variance += diff * diff;
-        }
-
-        return variance / count;
-    };
-
-    double variance_before = calc_variance(input, channels);
-    double variance_after = calc_variance(output, channels);
+    // Calculate variance before and after blur using helper function
+    const double variance_before = test_helpers::calculate_image_variance(
+        input.data(), width, height, channels);
+    const double variance_after = test_helpers::calculate_image_variance(
+        output.data(), width, height, channels);
 
     // Blur should reduce variance (smoothing effect)
     EXPECT_LT(variance_after, variance_before)

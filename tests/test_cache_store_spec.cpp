@@ -727,7 +727,7 @@ TEST(CacheStoreSpec, LoadFromStringWithEmptyJson)
     std::string json_content = "{}";
 
     CacheStore store;
-    bool success = store.load_from_string(json_content.c_str());
+    [[maybe_unused]] bool success = store.load_from_string(json_content.c_str());
 
     // Empty JSON might be considered valid but with no entries
     EXPECT_EQ(store.size(), 0u);

@@ -111,4 +111,37 @@ namespace test_helpers
         }
     }
 
+    double calculate_image_variance(
+        const unsigned char *img,
+        int width,
+        int height,
+        int channels)
+    {
+        if (width <= 0 || height <= 0 || channels <= 0 || img == nullptr)
+        {
+            return 0.0;
+        }
+
+        const int pixel_count = width * height;
+        const size_t stride = static_cast<size_t>(channels);
+
+        // Calculate mean (using first channel only)
+        double sum = 0.0;
+        for (int i = 0; i < pixel_count; ++i)
+        {
+            sum += img[i * stride];
+        }
+        const double mean = sum / pixel_count;
+
+        // Calculate variance
+        double variance = 0.0;
+        for (int i = 0; i < pixel_count; ++i)
+        {
+            const double diff = img[i * stride] - mean;
+            variance += diff * diff;
+        }
+
+        return variance / pixel_count;
+    }
+
 } // namespace test_helpers

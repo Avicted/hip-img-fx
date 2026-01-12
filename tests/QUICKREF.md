@@ -40,28 +40,21 @@ xdg-open build/meson-logs/coveragereport/index.html
 
 ## Test Organization
 
-| Test Suite | Tests | GPU Required |
-|------------|-------|--------------|
-| FiltersCPU | 7 | No |
-| GPUFilterTest | 6 | Yes |
-| ImageIO | 6 | No |
-| ImageFormatsTest | 12 | No |
-| CLIParser | 7 | No |
-| AutotuneConfig | 1 | No |
-| AutotuneExtendedTest | 26 | No |
-| CacheStore | 4 | No |
-| GPUIntegrationTest | 6 | Yes |
-| GPUUtils | 11 | No |
-| ProcessTest | 6 | No |
-| ProcessGPUTest | 8 | Yes |
-| **Total** | **100** | **19 GPU tests** |
+The test suite includes comprehensive coverage across multiple categories:
 
-**Coverage Statistics:**
-- Line Coverage: 49.6% (4617/9308)
-- Function Coverage: 73.7% (585/794)
-- Branch Coverage: 30.3% (3816/12596)
-| GPUIntegrationTest | 6 | Yes |
-| **Total** | **37** | 12 GPU, 25 CPU |
+- **Core Filters & Processing**: ~150 tests covering CPU/GPU filters and processing
+- **Image I/O**: ~50 tests for loading, saving, and format handling
+- **CLI & Application**: ~60 tests for command-line parsing and application logic
+- **GPU Infrastructure**: ~40 tests for GPU utilities and integration
+- **Autotuning Framework**: ~360 tests for the autotuning system (spec tests)
+- **Benchmarking**: 28 tests for benchmark utility functions
+
+**Total: ~690 tests across 33 test files**
+
+**Coverage Statistics (v1.0.1):**
+- **Line Coverage**: 71.0% (11213/15801 lines)
+- **Function Coverage**: 92.2% (2540/2756 functions)
+- **Branch Coverage**: 33.2% (15514/46698 branches)
 
 ## Common Commands
 

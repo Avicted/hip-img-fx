@@ -61,5 +61,11 @@
     "cmake.configureOnOpen": false,
     "mesonbuild.configureOnOpen": true,
     "C_Cpp.default.configurationProvider": "mesonbuild.mesonbuild",
-    "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json"
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
+    "chat.tools.terminal.autoApprove": {
+        "/^bash \\./scripts/generate_coverage\\.sh$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
 }

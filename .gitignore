@@ -1,4 +1,5 @@
 build/
+build_test/
 
 findings/
 
@@ -6,11 +7,19 @@ examples/output/
 
 examples/*
 
-bench/scripts/hip_img_fx_venv/
+scripts/hip_img_fx_venv/
 
 # Autotuning cache files
 .autotune_cache*
 default_configs_*.json
+
+# Test coverage files
+*.gcda
+*.gcno
+*.gcov
+coverage.html
+coverage/
+htmlcov/
 
 .github/
 

@@ -3,7 +3,7 @@
 [![AMD ROCm](https://img.shields.io/badge/AMD-ROCm-red)]()
 [![HIP](https://img.shields.io/badge/HIP-C%2B%2B20-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-green)]()
-[![Version](https://img.shields.io/badge/version-1.0.1-green)]()
+[![Version](https://img.shields.io/badge/version-1.1.0-green)]()
 
 GPU-accelerated image processing framework with **production-ready autotuning** for optimal kernel configurations.
 
@@ -104,7 +104,7 @@ ninja -C build
 # Verify build
 ./build/hip-img-fx --help
 ============================
-Running HIP Image FX v1.0.1
+Running HIP Image FX v1.1.0
 ============================
 
 Usage: hip-img-fx [options]
@@ -165,7 +165,7 @@ Notes:
 
 ```bash
 # Full benchmark sweep (512² → 4096², 3 filters)
-./bench/scripts/run_benchmark.sh
+./scripts/run_benchmark.sh
 
 # Custom benchmark configuration
 ./build/hip-img-fx-bench \
@@ -176,7 +176,7 @@ Notes:
 
 # Analyze results (uses matplotlib & pandas in isolated venv)
 # Automatically creates venv, installs dependencies, generates visualizations
-./bench/scripts/run_analysis.sh bench/results/benchmark_*.csv
+./scripts/run_analysis.sh bench/results/benchmark_*.csv
 ```
 
 ### What Gets Benchmarked
@@ -301,17 +301,57 @@ process_batch_gpu(images, filter, batch_size);
 
 ## Testing & Validation
 
-### Build & Run Tests
+### Comprehensive Test Suite
+
+The project includes **100 tests** covering all major components:
 
 ```bash
-# Build with debugging enabled
-meson setup build --native-file native/hip.ini --reconfigure
-ninja -C build
+# Run all tests (81 CPU + 19 GPU tests)
+meson test -C build --print-errorlogs
 
-# Run benchmark suite (includes correctness validation)
+# Run CPU-only tests (for CI without GPU)
+meson test -C build --suite cpu
+
+# Run tests directly with GoogleTest
+./build/hip-img-fx-tests
+./build/hip-img-fx-tests --gtest_filter="FiltersCPU.*"
+
+# Generate coverage report
+./scripts/generate_coverage.sh
+xdg-open build/meson-logs/coveragereport/index.html
+```
+
+**Test Coverage:**
+- CPU Filters: 7 tests (correctness validation)
+- GPU Filters: 6 tests (CPU vs GPU comparison)
+- Image I/O: 18 tests (load/save/formats)
+- CLI Parser: 7 tests (argument parsing)
+- Autotuning: 31 tests (config & cache management)
+- GPU Integration: 6 tests (memory & batch processing)
+- GPU Utils: 11 tests (device queries & filters)
+- Process Functions: 14 tests (batch & single processing)
+
+**Coverage Metrics:**
+- Line Coverage: 49.6%
+- Function Coverage: 73.7%
+- Branch Coverage: 30.3%
+
+See [tests/README.md](tests/README.md) for detailed testing documentation.
+
+### VSCode Integration
+
+Run tests from Command Palette (`Ctrl+Shift+P` → `Tasks: Run Task`):
+- **Test: All** - Run all tests
+- **Test: CPU Only** - Run CPU tests only
+- **Test: Coverage Report** - Generate coverage report
+
+### Correctness Validation
+
+```bash
+# Benchmark includes correctness checks
 ./build/hip-img-fx-bench --iterations 5
 
-# Compare CPU vs GPU outputs (should be identical)
+# Manual CPU vs GPU comparison
 ./build/hip-img-fx --filter negative --input test.jpg --output gpu_out.jpg
 ./build/hip-img-fx --filter negative --input test.jpg --output cpu_out.jpg --use-cpu
 diff <(xxd gpu_out.jpg) <(xxd cpu_out.jpg)
@@ -380,7 +420,7 @@ int threads = 512;  // Tune: 256, 512, 1024
 ### Python Analysis Script
 
 ```bash
-./bench/scripts/run_analysis.sh results.csv
+./scripts/run_analysis.sh results.csv
 ```
 
 **Output**:

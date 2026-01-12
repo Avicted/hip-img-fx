@@ -14,7 +14,7 @@
                 "/home/avic/Pictures/train_output",
                 // "examples/output_example_01.jpg",
                 "--filter",
-                "gaussian-blur",
+                "negative",
                 // "--batch-size",
                 // "1",
                 // "--use-cpu",

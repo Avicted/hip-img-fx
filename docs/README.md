@@ -77,3 +77,23 @@ pkg-config --cflags hip-img-fx
 
 See [LICENSE](../LICENSE) for project licensing information.
 
+
+## References
+
+- [AMD ROCm Documentation](https://rocmdocs.amd.com/)
+- [HIP Programming Guide](https://github.com/ROCm-Developer-Tools/HIP)
+- [GPU Performance Optimization Techniques](https://developer.amd.com/resources/rocm-learning-center/)
+- [Separable Gaussian Blur](https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-40-incremental-computation-gaussian)
+
+
+## Credits
+
+Images (unsplash.com):
+- [example_01](https://unsplash.com/photos/pagoda-surrounded-by-trees-E_eWwM29wfU)
+- [example_02](https://unsplash.com/photos/blue-and-brown-bird-on-brown-tree-trunk-DPXytK8Z59Y)
+- [example_03](https://unsplash.com/photos/selective-focus-photo-of-giraffe-D6TqIa-tWRY)
+- [example_04](https://unsplash.com/photos/black-white-and-yellow-bird-on-brown-tree-branch-during-daytime-vjFC9OjrOtA)
+- [example_05](https://unsplash.com/photos/two-white-ferrets-zQTw2g6JY6U)
+
+
+

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Victor Anderssén
+
 /**
  * @file test_hip_event_spec.cpp
  * @brief Specification tests for HIPEvent public API (hip_event.h)

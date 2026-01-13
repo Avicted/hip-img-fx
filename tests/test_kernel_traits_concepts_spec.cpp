@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Victor Anderssén
+
 /**
  * @file test_kernel_traits_concepts_spec.cpp
  * @brief Specification tests for kernel traits concepts (kernel_traits_concepts.h)

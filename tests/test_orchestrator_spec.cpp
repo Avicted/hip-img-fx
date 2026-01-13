@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Victor Anderssén
+
 /**
  * @file test_orchestrator_spec.cpp
  * @brief Comprehensive tests for TuningOrchestrator (orchestrator.h)

@@ -8,7 +8,6 @@ Complete documentation for the HIP Image FX GPU-accelerated image processing fra
 
 1. **[Main README](../README.md)** - Project overview, installation, and quick start
 2. **[Autotuning Guide](AUTOTUNING_GUIDE.md)** - Complete framework documentation
-3. **[Changelog](CHANGELOG.md)** - Version history and release notes
 4. **[Cache Files Guide](AUTOTUNING_CACHE_FILES.md)** - Understanding autotuning cache system
 
 ### Key Features

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Victor Anderssén
+
 /**
  * @file test_benchmarker_spec.cpp
  * @brief Specification tests for Benchmarker public API (benchmarker.h)

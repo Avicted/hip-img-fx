@@ -11,7 +11,7 @@ It features **automatic kernel configuration tuning** to maximize performance ac
 
 The project is designed as both a practical image-processing tool and a **reusable framework for GPU kernel autotuning** in real-world workloads.
 
----
+
 
 ## About the Project
 
@@ -24,7 +24,7 @@ This project was built to explore and demonstrate:
 
 Rather than focusing on a single optimized kernel, HIP Image FX emphasizes **reusability, measurement, and adaptability across different GPU architectures**.
 
----
+
 
 ## Features
 
@@ -39,7 +39,7 @@ Rather than focusing on a single optimized kernel, HIP Image FX emphasizes **reu
 - Reusable autotuning framework for custom HIP kernels
 - CLI-driven workflow suitable for scripting and automation
 
----
+
 
 ## Documentation
 
@@ -47,7 +47,7 @@ Rather than focusing on a single optimized kernel, HIP Image FX emphasizes **reu
 - **[Autotuning Guide](docs/AUTOTUNING_GUIDE.md)** – Framework design, API, and usage  
 - **[Testing Guide](tests/README.md)** – Test structure and execution  
 
----
+
 
 ## Quick Start
 
@@ -80,7 +80,7 @@ ninja -C build
 
 Run `./build/hip-img-fx --help` for the full list of options.
 
----
+
 
 ## Benchmarking
 
@@ -99,7 +99,7 @@ The benchmarks compare:
 - Tuned vs untuned kernels
 - Performance scaling across batch sizes
 
----
+
 
 ## Testing
 
@@ -113,7 +113,7 @@ meson test -C build --suite cpu
 
 See **[tests/README.md](tests/README.md)** for detailed testing documentation.
 
----
+
 
 ## Using HIP Image FX as a Library
 
@@ -128,7 +128,7 @@ This allows you to integrate GPU autotuning and image-processing kernels into ex
 
 Refer to **[docs/AUTOTUNING_GUIDE.md](docs/AUTOTUNING_GUIDE.md)** for integration examples.
 
----
+
 
 ## Roadmap
 
@@ -137,7 +137,7 @@ Refer to **[docs/AUTOTUNING_GUIDE.md](docs/AUTOTUNING_GUIDE.md)** for integratio
 - CI validation across multiple GPU architectures  
 - Improved profiling and visualization tooling  
 
----
+
 
 ## About the Author
 
@@ -158,7 +158,7 @@ If you are evaluating this project for professional use, or are interested in **
 - GitHub: https://github.com/Avicted  
 - LinkedIn: https://www.linkedin.com/in/victoranderssen/
 
----
+
 
 ## License
 

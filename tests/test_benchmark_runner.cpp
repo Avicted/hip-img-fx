@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Victor Anderssén
+
 /**
  * @file test_benchmark_runner.cpp
  * @brief Tests for benchmark runner functionality

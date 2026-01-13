@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Victor Anderssén
+
 #include <gtest/gtest.h>
 #include "../src/cli/cli_parser.h"
 #include "../src/core/gpu_utils.h"

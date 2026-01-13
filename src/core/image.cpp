@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Victor Anderssén
+
 #include "image.h"
 
 #define STB_IMAGE_IMPLEMENTATION

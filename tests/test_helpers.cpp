@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Victor Anderssén
+
 #include "test_helpers.h"
 #include <algorithm>
 #include <random>

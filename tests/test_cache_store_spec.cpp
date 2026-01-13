@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Victor Anderssén
+
 /**
  * @file test_cache_store_spec.cpp
  * @brief Specification tests for CacheStore public API (cache_store.h)

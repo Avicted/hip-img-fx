@@ -204,31 +204,65 @@ Tests automatically detect GPU availability at startup:
 **With GPU:**
 ```
 === GPU detected: AMD Radeon RX 6900 XT (Device count: 1) ===
-[==========] Running 40 tests from 9 test suites.
+[==========] Running N tests from M test suites.
 ...
 ```
 
 **Without GPU:**
 ```
 === No GPU detected - GPU tests will be skipped ===
-[==========] Running 40 tests from 9 test suites.
+[==========] Running N tests from M test suites.
 ...
 [  SKIPPED ] GPUFilterTest.GrayscaleGPUvsCPU (0 ms)
 [  SKIPPED ] GPUFilterTest.NegativeGPUvsCPU (0 ms)
 ...
 ```
 
-### Test Categories
+### Test Inventory (Current)
 
-| Category | Tests | GPU Required | Runs in CI |
-|----------|-------|--------------|------------|
-| **CPU Filter Tests** | 7 | ❌ No | ✅ Yes |
-| **GPU Filter Tests** | 6 | ✅ Yes | ⚠️ Skipped |
-| **Image I/O Tests** | 6 | ❌ No | ✅ Yes |
-| **CLI Parser Tests** | 7 | ❌ No | ✅ Yes |
-| **Autotune Config Tests** | 4 | ❌ No | ✅ Yes |
-| **Cache Store Tests** | 4 | ❌ No | ✅ Yes |
-| **GPU Integration Tests** | 6 | ✅ Yes | ⚠️ Skipped |
+The test binary currently contains **690 tests across 35 GoogleTest suites**.
+
+Notes:
+- CI typically runs the Meson test `unit_tests_cpu_only` (suite `cpu`), which uses `--gtest_filter=-*GPU*`. Tests that require a HIP device but don’t match `*GPU*` should `GTEST_SKIP()` when no device is available.
+- To see the authoritative list for your build: `./build/hip-img-fx-tests --gtest_list_tests`.
+
+| GoogleTest Suite | Tests | GPU Required | Runs in CI |
+|------------------|-------|--------------|------------|
+| AppMainFixture | 21 | ❌ No | ✅ Yes |
+| AutotuneConfig | 1 | ❌ No | ✅ Yes |
+| AutotuneExtendedTest | 26 | ❌ No | ✅ Yes |
+| BenchmarkerSpec | 25 | ✅ Yes (skips without HIP) | ⚠️ Skipped |
+| BenchmarkResultSpec | 4 | ❌ No | ✅ Yes |
+| BenchmarkRunner | 28 | ❌ No | ✅ Yes |
+| CacheEntrySpec | 3 | ❌ No | ✅ Yes |
+| CacheKeySpec | 13 | ❌ No | ✅ Yes |
+| CacheStore | 4 | ❌ No | ✅ Yes |
+| CacheStoreSpec | 42 | ❌ No | ✅ Yes |
+| CLIParser | 7 | ❌ No | ✅ Yes |
+| CLIParserExtended | 4 | ❌ No | ✅ Yes |
+| CLIParserFixture | 21 | ❌ No | ✅ Yes |
+| FiltersCPU | 7 | ❌ No | ✅ Yes |
+| FiltersCPUExtended | 17 | ❌ No | ✅ Yes |
+| FiltersTraits | 37 | ❌ No | ✅ Yes |
+| GenerateCandidates | 29 | ❌ No | ✅ Yes |
+| GPUFilterTest | 6 | ✅ Yes | ⚠️ Skipped |
+| GPUIntegrationTest | 6 | ✅ Yes | ⚠️ Skipped |
+| GPUUtils | 10 | ✅ Yes (skips without HIP) | ⚠️ Skipped |
+| GPUUtilsExtended | 11 | ✅ Yes (skips without HIP) | ⚠️ Skipped |
+| HIPEventSpec | 26 | ✅ Yes (skips without HIP) | ⚠️ Skipped |
+| ImageEdgeCasesTest | 19 | ❌ No | ✅ Yes |
+| ImageFormatsTest | 12 | ❌ No | ✅ Yes |
+| ImageIO | 6 | ❌ No | ✅ Yes |
+| KernelTraitsConceptsSpec | 35 | ❌ No | ✅ Yes |
+| OrchestratorSpec | 73 | ✅ Yes (skips without HIP) | ⚠️ Skipped |
+| ProcessErrorFixture | 39 | ❌ No | ✅ Yes |
+| ProcessExtendedTest | 14 | ❌ No | ✅ Yes |
+| ProcessGPUTest | 8 | ✅ Yes | ⚠️ Skipped |
+| ProcessTest | 7 | ❌ No | ✅ Yes |
+| TestHelpers | 17 | ❌ No | ✅ Yes |
+| TuningConfigExtended | 32 | ❌ No | ✅ Yes |
+| TuningConfigSpec | 42 | ❌ No | ✅ Yes |
+| TuningOptionsSpec | 38 | ❌ No | ✅ Yes |
 
 ## CI/CD Integration
 
